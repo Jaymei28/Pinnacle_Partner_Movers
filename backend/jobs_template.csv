@@ -1,0 +1,4 @@
+carrier_name,job_title,location,zip_code,salary,pay_type,home_time,experience_required,driver_type,freight_type,equipment_type,states_covered,description
+Swift Transportation,CDL-A Truck Driver - Phoenix,Phoenix AZ,85001,$1200 Weekly,Weekly,Daily,0 Months,Company Driver,No Touch,Dry Van,"AZ,CA,NV","Long haul trucking position with competitive pay and benefits"
+Walmart,CDL-A Driver - Opelika AL,Opelika AL,36801,$1300 Weekly,Weekly,Daily,6 Months,Company Driver,No Touch Freight,Dry Van,"AL,GA,FL","Walmart dedicated route with consistent schedule"
+Epes Transport,Regional Driver,Charlotte NC,28201,$1100 Weekly,Weekly,Home Daily,3 Months,Company Driver,Driver Unload,Dry Van,"NC,SC,VA","Regional routes with home time daily"
