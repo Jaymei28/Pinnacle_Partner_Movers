@@ -29,15 +29,17 @@ class JobList(generics.ListCreateAPIView):
             driver_zip = request.query_params.get('zip_code')
             
             if driver_zip:
-                # Filter jobs by hiring radius
+                # Filter jobs by hiring radius with multi-tier location strategy
                 queryset = Job.objects.filter(is_active=True)
                 filtered_jobs = filter_jobs_by_radius(driver_zip, queryset)
                 
-                # Serialize with distance information
+                # Serialize with distance and location information
                 results = []
                 for job_data in filtered_jobs:
                     job_dict = JobSerializer(job_data['job']).data
                     job_dict['distance_miles'] = job_data['distance_miles']
+                    job_dict['location_source'] = job_data['location_source']
+                    job_dict['match_type'] = job_data['match_type']
                     results.append(job_dict)
                 
                 return Response(results)
@@ -52,6 +54,7 @@ class JobList(generics.ListCreateAPIView):
             import traceback
             traceback.print_exc()
             return Response([])
+
 
 
 class JobDetail(generics.RetrieveUpdateDestroyAPIView):

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import Opportunities from './pages/Opportunities';
 import Carriers from './pages/Carriers';
+import Settings from './pages/Settings';
 import './index.css';
 
 const App = () => {
@@ -36,7 +37,7 @@ const App = () => {
 
             <Route path="carriers" element={<Carriers />} />
 
-            <Route path="settings" element={<div className="status-msg">Account and notification settings.</div>} />
+            <Route path="settings" element={<Settings />} />
           </Route>
 
           {/* Catch-all Redirect */}

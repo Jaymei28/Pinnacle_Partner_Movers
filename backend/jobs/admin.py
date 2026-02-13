@@ -9,6 +9,16 @@ class CarrierAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'created_at')
     search_fields = ('name', 'description')
     readonly_fields = ('created_at', 'updated_at')
+    list_per_page = 50  # Show up to 50 carriers per page
+    preserve_filters = False  # Don't preserve filters to avoid caching
+    
+    def get_queryset(self, request):
+        """
+        Override to prevent queryset caching and ensure fresh data.
+        """
+        qs = super().get_queryset(request)
+        # Force evaluation to prevent caching issues
+        return qs.order_by('name')
     
     fieldsets = (
         ('Company Information', {
@@ -44,6 +54,10 @@ class CarrierAdmin(admin.ModelAdmin):
                 'benefit_military_program',
                 'benefit_other'
             )
+        }),
+        ('Process & Qualifications', {
+            'fields': ('presentation', 'pre_qualifications', 'app_process'),
+            'description': 'Paste table data into Presentation and Pre-Qualifications'
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),

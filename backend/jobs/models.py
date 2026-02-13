@@ -26,6 +26,11 @@ class Carrier(models.Model):
     benefit_tuition_program = models.TextField(blank=True, null=True, help_text="Debt-free tuition program details")
     benefit_other = models.TextField(blank=True, null=True, help_text="Any other benefits")
     
+    # Process & Qualifications
+    presentation = models.TextField(blank=True, null=True, help_text="Carrier presentation details (paste table data here)")
+    pre_qualifications = models.TextField(blank=True, null=True, help_text="Pre-qualification requirements (paste table data here)")
+    app_process = models.TextField(blank=True, null=True, help_text="Application process instructions")
+    
     # Headquarters Location (for job zip code fallback)
     headquarters_zip = models.CharField(
         max_length=10,
@@ -205,6 +210,33 @@ class Job(models.Model):
         help_text="States covered (comma-separated state codes): AL, AK, AZ, etc."
     )
     
+    # Geocoding fields for distance-based search
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        help_text="Auto-populated from ZIP code or carrier HQ"
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        blank=True,
+        null=True,
+        help_text="Auto-populated from ZIP code or carrier HQ"
+    )
+    location_source = models.CharField(
+        max_length=20,
+        choices=[
+            ('job_zip', 'Job ZIP Code'),
+            ('carrier_hq', 'Carrier Headquarters'),
+            ('state_only', 'State Level Only'),
+        ],
+        blank=True,
+        null=True,
+        help_text="Source of location data for transparency"
+    )
+    
     # Zip Code Source Tracking
     zip_source = models.CharField(
         max_length=20,
@@ -242,6 +274,14 @@ class Job(models.Model):
                 # Update hiring radius if extracted from description
                 if radius and source == 'extracted':
                     self.hiring_radius_miles = radius
+        
+        # Auto-populate geocoding fields for distance-based search
+        if not self.latitude or not self.longitude:
+            from .geocoding import get_job_location
+            lat, lng, source = get_job_location(self)
+            self.latitude = lat
+            self.longitude = lng
+            self.location_source = source
         
         super().save(*args, **kwargs)
     

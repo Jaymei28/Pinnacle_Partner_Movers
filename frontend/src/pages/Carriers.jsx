@@ -29,6 +29,69 @@ const Carriers = () => {
         }
     };
 
+    const renderGenericTable = (text) => {
+        if (!text) return null;
+        let processedText = String(text).replace(/\\n/g, '\n');
+        const lines = processedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        if (lines.length <= 1) return renderFormattedText(text);
+
+        // DELIMITER DETECTION (Pipe or Tab)
+        const firstLine = lines[0];
+        let delimiter = null;
+        if (firstLine.includes('|')) delimiter = '|';
+        else if (firstLine.includes('\t')) delimiter = '\t';
+
+        // CASE 1: ORIENTATION TABLE (Specific Keywords)
+        const orientationKeywords = ['city', 'state', 'days', 'time', 'address', 'terminal'];
+        const isOrientationTable = orientationKeywords.some(k => firstLine.toLowerCase().includes(k));
+
+        if (isOrientationTable) {
+            return renderOrientationTable(text);
+        }
+
+        // CASE 2: GENERIC TABLE (Delimited)
+        if (delimiter) {
+            const headers = lines[0].split(delimiter).map(h => h.trim());
+            const rows = lines.slice(1).map(line => line.split(delimiter).map(c => c.trim()));
+
+            return (
+                <div className="orientation-table-wrapper">
+                    <table className="orientation-table">
+                        <thead>
+                            <tr>
+                                {headers.map((h, i) => (
+                                    <th key={i}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            {h.toLowerCase().includes('presentation') && <i className="lucide-refresh-cw" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
+                                            {h.toLowerCase().includes('topic') && <i className="lucide-git-branch" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
+                                            {h.toLowerCase().includes('description') && <i className="lucide-file-text" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
+                                            {h}
+                                        </div>
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row, idx) => (
+                                <tr key={idx}>
+                                    {row.map((cell, i) => (
+                                        <td key={i} style={i === 0 ? { fontWeight: '500', color: 'var(--text-dark)' } : {}}>
+                                            {renderFormattedText(cell)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+        }
+
+        // FALLBACK: Just formatted text
+        return renderFormattedText(text);
+    };
+
     const renderOrientationTable = (text) => {
         if (!text) return null;
         let processedText = String(text).replace(/\\n/g, '\n');
@@ -124,38 +187,50 @@ const Carriers = () => {
         return (
             <div className="lane-section-content">
                 {lines.map((line, index) => {
-                    // Remove bullets and bold markers
+                    const isBullet = /^[•\*\-]/.test(line);
+                    const isBoldMarkdown = line.startsWith('**') && line.endsWith('**');
+
                     const cleanLine = line.replace(/^[•\*\-\s]+/, '').replace(/\*\*/g, '');
 
                     if (!cleanLine) return null;
 
-                    // Section Header (ALL CAPS)
-                    if (cleanLine.length >= 3 && cleanLine === cleanLine.toUpperCase() && !cleanLine.includes(':')) {
+                    // Improved Header Detection:
+                    // Headers are usually short, don't have bullets, and DON'T end in a period.
+                    const endsWithPunctuation = /[.\?!]$/.test(cleanLine.trim());
+                    const isShort = cleanLine.length < 50;
+                    const isProbablyProperty = cleanLine.includes(':') && cleanLine.indexOf(':') < 25;
+
+                    const isHeader = isBoldMarkdown || (!isBullet && isShort && !endsWithPunctuation && !isProbablyProperty);
+
+                    if (isHeader) {
                         return (
-                            <div key={index} className="lane-section-title" style={{ marginTop: index > 0 ? '0.5rem' : '0', marginBottom: '0.2rem' }}>
+                            <div key={index} className="lane-section-title" style={{ fontWeight: '800', marginTop: index > 0 ? '1.25rem' : '0' }}>
                                 {cleanLine}
                             </div>
                         );
                     }
 
-                    // Labeled Item
                     if (cleanLine.includes(':')) {
                         const colonIndex = cleanLine.indexOf(':');
                         const label = cleanLine.substring(0, colonIndex).trim();
-                        const value = cleanLine.substring(colonIndex + 1).trim();
+                        const valueParts = cleanLine.substring(colonIndex + 1).trim().split('**');
 
                         return (
-                            <div key={index} className="lane-item">
-                                <span className="lane-label">{label}:</span>
-                                <span className="lane-value">{value}</span>
+                            <div key={index} className={isBullet ? "lane-item" : "lane-text-line"}>
+                                <span className="lane-label" style={{ fontWeight: '700' }}>{label}:</span>
+                                <span className="lane-value">
+                                    {valueParts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)}
+                                </span>
                             </div>
                         );
                     }
 
-                    // Regular text
+                    const parts = cleanLine.split('**');
                     return (
-                        <div key={index} className="lane-item">
-                            <span className="lane-text">{cleanLine}</span>
+                        <div key={index} className={isBullet ? "lane-item" : "lane-text-line"}>
+                            <span className="lane-text">
+                                {parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)}
+                            </span>
                         </div>
                     );
                 })}
@@ -321,6 +396,33 @@ const Carriers = () => {
                                 )}
                             </div>
                         </div>
+
+                        {/* Process & Qualifications */}
+                        {(selectedCarrier.presentation || selectedCarrier.pre_qualifications || selectedCarrier.app_process) && (
+                            <div className="lane-info-container" style={{ marginTop: '2rem' }}>
+                                <div className="lane-side-label">Process & Quals</div>
+                                <div className="lane-info-content">
+                                    {selectedCarrier.presentation && (
+                                        <div className="lane-section">
+                                            <h5 className="lane-section-title">Presentation</h5>
+                                            <div className="lane-section-content">{renderGenericTable(selectedCarrier.presentation)}</div>
+                                        </div>
+                                    )}
+                                    {selectedCarrier.pre_qualifications && (
+                                        <div className="lane-section">
+                                            <h5 className="lane-section-title">Pre-Qualifications</h5>
+                                            <div className="lane-section-content">{renderGenericTable(selectedCarrier.pre_qualifications)}</div>
+                                        </div>
+                                    )}
+                                    {selectedCarrier.app_process && (
+                                        <div className="lane-section">
+                                            <h5 className="lane-section-title">Application Process</h5>
+                                            <div className="lane-section-content">{renderFormattedText(selectedCarrier.app_process)}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="modal-actions">

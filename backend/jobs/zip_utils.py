@@ -133,9 +133,14 @@ def auto_populate_zip_code(job):
         return job.carrier.headquarters_zip, 'carrier_hq', None
     
     # Strategy 4: Use state capital (last resort)
-    if job.states:
-        first_state = job.states.split(',')[0].strip()
-        zip_code = STATE_CAPITAL_ZIPS.get(first_state)
+    state_to_check = None
+    if job.state and len(job.state.strip()) == 2:
+        state_to_check = job.state.strip().upper()
+    elif job.states:
+        state_to_check = job.states.split(',')[0].strip().upper()
+    
+    if state_to_check:
+        zip_code = STATE_CAPITAL_ZIPS.get(state_to_check)
         if zip_code:
             return zip_code, 'state_capital', None
     
