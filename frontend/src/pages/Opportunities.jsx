@@ -915,32 +915,7 @@ const Opportunities = () => {
                                         </div>
                                     )}
 
-                                    {/* Carrier Process & Qualifications */}
-                                    {(selectedJob.carrier.presentation || selectedJob.carrier.pre_qualifications || selectedJob.carrier.app_process) && (
-                                        <div className="lane-section" style={{ marginTop: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
-                                            <h5 className="lane-section-title">Carrier Process & Qualifications</h5>
-                                            <div className="lane-info-content">
-                                                {selectedJob.carrier.presentation && (
-                                                    <div className="lane-section">
-                                                        <h5 className="lane-section-title">Presentation</h5>
-                                                        <div className="lane-section-content">{renderGenericTable(selectedJob.carrier.presentation)}</div>
-                                                    </div>
-                                                )}
-                                                {selectedJob.carrier.pre_qualifications && (
-                                                    <div className="lane-section">
-                                                        <h5 className="lane-section-title">Pre-Qualifications</h5>
-                                                        <div className="lane-section-content">{renderGenericTable(selectedJob.carrier.pre_qualifications)}</div>
-                                                    </div>
-                                                )}
-                                                {selectedJob.carrier.app_process && (
-                                                    <div className="lane-section">
-                                                        <h5 className="lane-section-title">Application Process</h5>
-                                                        <div className="lane-section-content">{renderAppProcess(selectedJob.carrier.app_process)}</div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
+
                                 </div>
                             </div>
                         )}
