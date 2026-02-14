@@ -36,7 +36,7 @@ class JobList(generics.ListCreateAPIView):
                 # Serialize with distance and location information
                 results = []
                 for job_data in filtered_jobs:
-                    job_dict = JobSerializer(job_data['job']).data
+                    job_dict = JobSerializer(job_data['job'], context={'request': request}).data
                     job_dict['distance_miles'] = job_data['distance_miles']
                     job_dict['location_source'] = job_data['location_source']
                     job_dict['match_type'] = job_data['match_type']

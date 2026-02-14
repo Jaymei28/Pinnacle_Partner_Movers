@@ -116,9 +116,17 @@ def auto_populate_zip_code(job):
         tuple: (zip_code, source, hiring_radius) or (None, None, None)
     """
     
-    # Strategy 1: Extract from description (highest priority)
-    if job.description:
-        zip_code, radius = extract_zip_from_description(job.description)
+    # Strategy 1: Extract from consolidated fields (highest priority)
+    all_text = " ".join(filter(None, [
+        job.job_details,
+        job.pay_details,
+        job.equipment_details,
+        job.key_disqualifiers,
+        job.requirements_details
+    ]))
+    
+    if all_text:
+        zip_code, radius = extract_zip_from_description(all_text)
         if zip_code:
             return zip_code, 'extracted', radius
     
@@ -136,8 +144,11 @@ def auto_populate_zip_code(job):
     state_to_check = None
     if job.state and len(job.state.strip()) == 2:
         state_to_check = job.state.strip().upper()
-    elif job.states:
-        state_to_check = job.states.split(',')[0].strip().upper()
+    elif job.requirements_details:
+        # Check requirements_details for a 2-letter state code at the start or in common patterns
+        match = re.search(r'\b([A-Z]{2})\b', job.requirements_details)
+        if match:
+            state_to_check = match.group(1)
     
     if state_to_check:
         zip_code = STATE_CAPITAL_ZIPS.get(state_to_check)

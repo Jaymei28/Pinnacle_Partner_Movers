@@ -68,33 +68,29 @@ class CarrierAdmin(admin.ModelAdmin):
 
 @admin.register(Job)
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'carrier', 'state', 'colored_zip_code', 'salary', 'home_time', 'is_active', 'created_at')
-    list_filter = ('zip_source', 'carrier', 'is_active', 'created_at', 'account_type')
-    search_fields = ('title', 'carrier__name', 'state', 'description', 'zip_code')
+    list_display = ('title', 'carrier', 'state', 'colored_zip_code', 'is_active', 'created_at')
+    list_filter = ('carrier', 'is_active', 'created_at')
+    search_fields = ('title', 'carrier__name', 'state', 'job_details', 'zip_code')
     readonly_fields = ('created_at', 'updated_at')
-    list_per_page = 100  # Show up to 100 jobs per page
-    preserve_filters = False  # Don't preserve filters across requests
+    list_per_page = 100
+    preserve_filters = False
     
     def get_queryset(self, request):
-        """
-        Override to prevent queryset caching and ensure fresh data.
-        Uses select_related to optimize database queries.
-        """
         qs = super().get_queryset(request)
-        # Use select_related to optimize the query and prevent caching issues
         return qs.select_related('carrier')
     
     def colored_zip_code(self, obj):
         """Display zip code with color-coded source indicator"""
         colors = {
-            'manual': '#28a745',        # Green - manually entered (best)
-            'extracted': '#007bff',     # Blue - extracted from description (good)
-            'geocoded': '#17a2b8',      # Cyan - geocoded (good)
-            'carrier_hq': '#ffc107',    # Orange - carrier headquarters (okay)
-            'state_capital': '#dc3545'  # Red - state capital (needs review)
+            'manual': '#28a745',
+            'extracted': '#007bff',
+            'geocoded': '#17a2b8',
+            'carrier_hq': '#ffc107',
+            'state_capital': '#dc3545'
         }
-        color = colors.get(obj.zip_source, '#6c757d')  # Gray for unknown
-        source_label = dict(obj._meta.get_field('zip_source').choices).get(obj.zip_source, 'Unknown')
+        color = colors.get(obj.zip_source, '#6c757d')
+        # Use simple label since zip_source is no longer a choice field with labels
+        source_label = obj.zip_source or 'Unknown'
         
         return format_html(
             '<span style="color: {}; font-weight: bold;">{}</span> <span style="color: #999; font-size: 0.85em;">({})</span>',
@@ -107,49 +103,28 @@ class JobAdmin(admin.ModelAdmin):
         ('SECTION 1: Basic Information', {
             'fields': ('carrier', 'title', 'state', 'zip_code', 'hiring_radius_miles', 'is_active')
         }),
-        ('Pay Details', {
-            'fields': ('pay_range', 'average_weekly_pay', 'salary', 'pay_type', 'short_haul_pay', 'stop_pay', 'bonus_offer')
+        ('SECTION 2: Job Details', {
+            'fields': ('job_details',),
+            'description': 'Paste all job description details, account overview, and highlights here.'
         }),
-        ('Home Time', {
-            'fields': ('exact_home_time', 'home_time')
+        ('SECTION 3: Pay Details', {
+            'fields': ('pay_details',),
+            'description': 'Paste all pay details, bonuses, and compensation info here.'
         }),
-        ('Load/Unload', {
-            'fields': ('load_unload_type', 'unload_pay')
+        ('SECTION 4: Equipment', {
+            'fields': ('equipment_details',),
+            'description': 'Paste all equipment-related details here.'
         }),
-        ('SECTION 2: Lane Information', {
-            'fields': ('description', 'job_details', 'account_overview', 'administrative_details'),
-            'description': 'Paste blocks of text for each section'
+        ('SECTION 5: Key Disqualifiers', {
+            'fields': ('key_disqualifiers',),
+            'description': 'Key disqualifiers for this job.'
         }),
-        ('SECTION 3: Company Benefits & Info', {
-            'description': 'Benefits are automatically pulled from the selected Carrier',
-            'fields': (),
-            'classes': ('collapse',)
-        }),
-        ('SECTION 4: Orientation', {
-            'fields': ('orientation_details', 'orientation_table'),
-            'description': 'Paste orientation information. Table field is optional.'
-        }),
-        ('SECTION 5: Job Requirements (Multi-Select - Comma Separated)', {
-            'fields': (
-                'trainees_accepted',
-                'account_type',
-                'cameras',
-                'driver_types',
-                'drug_test_type',
-                'experience_levels',
-                'freight_types',
-                'sap_required',
-                'transmissions',
-                'states'
-            ),
-            'description': 'Enter multiple values separated by commas (e.g., "Company Driver, Owner Operator")'
+        ('SECTION 6: Requirements', {
+            'fields': ('requirements_details',),
+            'description': 'Paste all job requirements and qualification details here.'
         }),
         ('Location Details', {
             'fields': ('latitude', 'longitude'),
-            'classes': ('collapse',)
-        }),
-        ('Source Tracking', {
-            'fields': ('source_create_date', 'source_modified_date'),
             'classes': ('collapse',)
         }),
         ('Metadata', {

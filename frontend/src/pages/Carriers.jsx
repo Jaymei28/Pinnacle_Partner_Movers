@@ -7,7 +7,10 @@ const Carriers = () => {
     const [carriers, setCarriers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedCarrier, setSelectedCarrier] = useState(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingCarrier, setEditingCarrier] = useState(null);
     const [error, setError] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchCarriers = async () => {
         setLoading(true);
@@ -175,6 +178,50 @@ const Carriers = () => {
         fetchCarriers();
     }, []);
 
+    const handleEditClick = (e, carrier) => {
+        e.stopPropagation();
+        setEditingCarrier({ ...carrier });
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateCarrier = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        setError(null);
+
+        const formData = new FormData();
+        // Append all text fields
+        Object.keys(editingCarrier).forEach(key => {
+            if (key !== 'logo' && key !== 'active_jobs_count') {
+                formData.append(key, editingCarrier[key] || '');
+            }
+        });
+
+        // Append logo if it's a file object (newly selected)
+        const logoInput = document.getElementById('carrier-logo-upload');
+        if (logoInput && logoInput.files[0]) {
+            formData.append('logo', logoInput.files[0]);
+        }
+
+        try {
+            const response = await axios.patch(`${API_URL}${editingCarrier.id}/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            });
+
+            // Update local state
+            setCarriers(prev => prev.map(c => c.id === editingCarrier.id ? response.data : c));
+            setIsEditModalOpen(false);
+            setEditingCarrier(null);
+        } catch (err) {
+            console.error('Error updating carrier:', err);
+            setError('Failed to update carrier. Please check the fields and try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const renderFormattedText = (text) => {
         if (!text) return null;
 
@@ -240,45 +287,73 @@ const Carriers = () => {
 
     return (
         <div className="opportunities-view">
-            <div className="carriers-header">
-                <h2>Carriers</h2>
-                <p className="carriers-subtitle">
-                    Browse all trucking companies and their benefits packages.
-                </p>
-            </div>
 
             {loading ? (
                 <div className="status-msg">Loading carriers...</div>
             ) : error ? (
                 <div className="status-msg error">{error}</div>
             ) : (
-                <div className="carriers-grid">
-                    {carriers.length === 0 ? (
-                        <div className="status-msg">No carriers available at the moment.</div>
-                    ) : (
-                        carriers.map(carrier => (
-                            <div key={carrier.id} className="carrier-card" onClick={() => setSelectedCarrier(carrier)}>
-                                <div className="carrier-card-header">
-                                    <h3>{carrier.name}</h3>
-                                    {carrier.website && (
-                                        <a
-                                            href={carrier.website}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="carrier-website-link"
-                                        >
-                                            Website →
-                                        </a>
-                                    )}
-                                </div>
-                                {carrier.description && (
-                                    <p className="carrier-description">{carrier.description}</p>
-                                )}
-                                <button className="btn-view-benefits">View Benefits</button>
-                            </div>
-                        ))
-                    )}
+                <div className="jobs-table-container">
+                    <table className="jobs-listing-table carriers-table">
+                        <thead>
+                            <tr className="table-header-row-static">
+                                <th className="th-id">ID</th>
+                                <th className="th-carrier">Name</th>
+                                <th className="th-active-jobs">Active Jobs</th>
+                                <th className="th-last-updated">Date Updated</th>
+                                <th className="th-actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {carriers.length === 0 ? (
+                                <tr className="empty-row">
+                                    <td colSpan="5" className="empty-table-msg">No carriers available at the moment.</td>
+                                </tr>
+                            ) : (
+                                carriers.map(carrier => (
+                                    <tr key={carrier.id} className="job-table-row carrier-row" onClick={() => setSelectedCarrier(carrier)}>
+                                        <td className="td-id">{carrier.id}</td>
+                                        <td className="td-carrier">
+                                            <div className="carrier-info-cell">
+                                                {carrier.logo ? (
+                                                    <img src={carrier.logo} alt={carrier.name} className="table-carrier-logo" />
+                                                ) : (
+                                                    <div className="table-carrier-placeholder">{carrier.name.charAt(0)}</div>
+                                                )}
+                                                <span className="job-title-link">{carrier.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="td-active-jobs">
+                                            <span className="count-pill">{carrier.active_jobs_count || 0}</span>
+                                        </td>
+                                        <td className="td-date">
+                                            {carrier.updated_at ? new Date(carrier.updated_at).toLocaleString('en-US', {
+                                                month: 'long',
+                                                day: 'numeric',
+                                                year: 'numeric',
+                                                hour: 'numeric',
+                                                minute: '2-digit',
+                                                hour12: true
+                                            }).replace(',', '') : 'N/A'}
+                                        </td>
+                                        <td className="td-actions">
+                                            <div className="carrier-actions">
+                                                <button className="btn-action-icon" title="Expand">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" /></svg>
+                                                </button>
+                                                <button className="btn-action-icon" title="Edit" onClick={(e) => handleEditClick(e, carrier)}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                </button>
+                                                <button className="btn-action-icon btn-view-orange" title="View Details">
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             )}
 
@@ -433,6 +508,88 @@ const Carriers = () => {
                                 Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Carrier Modal */}
+            {isEditModalOpen && editingCarrier && (
+                <div className="modal-overlay" onClick={() => setIsEditModalOpen(false)}>
+                    <div className="modal-content carrier-edit-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header-new">
+                            <h2>Edit Carrier: {editingCarrier.name}</h2>
+                            <button className="close-btn" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+                        </div>
+
+                        <form onSubmit={handleUpdateCarrier} className="edit-carrier-form">
+                            <div className="form-grid-two-col">
+                                <div className="form-group">
+                                    <label>Carrier Name</label>
+                                    <input
+                                        type="text"
+                                        value={editingCarrier.name || ''}
+                                        onChange={e => setEditingCarrier({ ...editingCarrier, name: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Website URL</label>
+                                    <input
+                                        type="url"
+                                        value={editingCarrier.website || ''}
+                                        onChange={e => setEditingCarrier({ ...editingCarrier, website: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Contact Email</label>
+                                    <input
+                                        type="email"
+                                        value={editingCarrier.contact_email || ''}
+                                        onChange={e => setEditingCarrier({ ...editingCarrier, contact_email: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label>Contact Phone</label>
+                                    <input
+                                        type="text"
+                                        value={editingCarrier.contact_phone || ''}
+                                        onChange={e => setEditingCarrier({ ...editingCarrier, contact_phone: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Company Description</label>
+                                <textarea
+                                    rows="3"
+                                    value={editingCarrier.description || ''}
+                                    onChange={e => setEditingCarrier({ ...editingCarrier, description: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Carrier Logo</label>
+                                <div className="logo-upload-preview">
+                                    {editingCarrier.logo && typeof editingCarrier.logo === 'string' && (
+                                        <img src={editingCarrier.logo} alt="Current logo" className="current-logo-preview" />
+                                    )}
+                                    <input
+                                        type="file"
+                                        id="carrier-logo-upload"
+                                        accept="image/*"
+                                        className="file-input-custom"
+                                    />
+                                </div>
+                                <p className="help-text">Select a new image to replace the current logo.</p>
+                            </div>
+
+                            <div className="modal-footer-new">
+                                <button type="button" className="btn-cancel" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                                <button type="submit" className="btn-save-main-new" disabled={isSubmitting}>
+                                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

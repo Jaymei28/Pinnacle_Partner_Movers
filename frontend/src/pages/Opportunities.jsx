@@ -12,13 +12,14 @@ const Opportunities = () => {
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
+    const [activeTab, setActiveTab] = useState('description');
     const [error, setError] = useState(null);
     const [zipCode, setZipCode] = useState('');
     const [searchZip, setSearchZip] = useState('');
     const [expandedJobId, setExpandedJobId] = useState(null);
     const [openDropdownId, setOpenDropdownId] = useState(null);
     const [carrierSearchQuery, setCarrierSearchQuery] = useState('');
-    const [carrierInfoPanel, setCarrierInfoPanel] = useState(null); // { job, type: 'presentation' | 'pre_qualifications' | 'app_process' }
+    const [carrierInfoPanel, setCarrierInfoPanel] = useState(null);
 
     const toggleExpand = (jobId) => {
         setExpandedJobId(expandedJobId === jobId ? null : jobId);
@@ -28,9 +29,13 @@ const Opportunities = () => {
         setLoading(true);
         setError(null);
         try {
-            const url = driverZip
-                ? `${API_URL}?zip_code=${driverZip}`
-                : API_URL;
+            let url = API_URL;
+            const params = new URLSearchParams();
+            if (driverZip) params.append('zip_code', driverZip);
+
+            const queryString = params.toString();
+            if (queryString) url += `?${queryString}`;
+
             const response = await axios.get(url);
             setJobs(response.data);
         } catch (err) {
@@ -42,16 +47,32 @@ const Opportunities = () => {
     };
 
     const handleSearch = () => {
-        if (zipCode.trim()) {
-            setSearchZip(zipCode.trim());
-            fetchJobs(zipCode.trim());
-        }
+        setSearchZip(zipCode.trim());
+        fetchJobs(zipCode.trim());
+    };
+
+    const handleViewDetails = (job) => {
+        setSelectedJob(job);
+        setActiveTab('description');
     };
 
     const handleClearSearch = () => {
         setZipCode('');
         setSearchZip('');
         fetchJobs();
+    };
+
+    const toggleHiringStatus = async (e, job) => {
+        e.stopPropagation(); // Prevent opening details modal if badge is clicked
+        const newStatus = job.hiring_status === 'full' ? 'open' : 'full';
+        try {
+            await axios.patch(`${API_URL}${job.id}/`, { hiring_status: newStatus });
+            setJobs(prevJobs => prevJobs.map(j =>
+                j.id === job.id ? { ...j, hiring_status: newStatus } : j
+            ));
+        } catch (err) {
+            console.error('Error updating status:', err);
+        }
     };
 
     const renderGenericTable = (text, filterQuery = '') => {
@@ -144,13 +165,13 @@ const Opportunities = () => {
             }
 
             return (
-                <div className="orientation-table-wrapper">
-                    <table className="orientation-table">
+                <div className="premium-table-wrapper">
+                    <table className="premium-data-table">
                         <tbody>
                             {filteredRows.map((row, idx) => (
-                                <tr key={idx}>
+                                <tr key={idx} className="table-data-row">
                                     {row.map((cell, i) => (
-                                        <td key={i} style={idx === 0 ? { fontWeight: '800', background: '#f8fafc' } : {}}>
+                                        <td key={i} className={idx === 0 ? "table-header-cell" : "table-value-cell"}>
                                             {renderFormattedText(cell, true)}
                                         </td>
                                     ))}
@@ -232,25 +253,148 @@ const Opportunities = () => {
         }
 
         return (
-            <div className="orientation-table-wrapper">
-                <table className="orientation-table">
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
                     <thead>
-                        <tr>
-                            <th>City / State</th>
-                            <th>Days</th>
-                            <th>Start Time</th>
-                            <th>Terminal Address</th>
+                        <tr className="table-header-row">
+                            <th className="table-header-cell">City / State</th>
+                            <th className="table-header-cell">Days</th>
+                            <th className="table-header-cell">Start Time</th>
+                            <th className="table-header-cell">Terminal Address</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((row, idx) => (
-                            <tr key={idx}>
-                                <td className="cell-city" style={{ fontWeight: 'normal' }}>{row.cityState}</td>
-                                <td className="cell-days">{row.days}</td>
-                                <td className="cell-time" style={{ fontWeight: 'normal' }}>{row.time}</td>
-                                <td className="cell-address">{row.address}</td>
+                            <tr key={idx} className="table-data-row">
+                                <td className="table-value-cell" style={{ fontWeight: 'normal' }}>{row.cityState}</td>
+                                <td className="table-value-cell">{row.days}</td>
+                                <td className="table-value-cell" style={{ fontWeight: 'normal' }}>{row.time}</td>
+                                <td className="table-value-cell">{row.address}</td>
                             </tr>
                         ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
+
+    const renderKeyDataTable = (text) => {
+        if (!text) return null;
+        let processedText = String(text).replace(/\\n/g, '\n');
+        const lines = processedText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+
+        if (lines.length === 0) return null;
+
+        // Detect delimiter if not using colons
+        let delimiter = null;
+        if (!lines[0].includes(':')) {
+            if (lines[0].includes('|')) delimiter = '|';
+            else if (lines[0].includes(',')) delimiter = ',';
+            else if (lines[0].includes('\t')) delimiter = '\t';
+        }
+
+        const splitLineDelimited = (line, delim) => {
+            if (delim !== ',') return line.split(delim).map(c => c.trim());
+            // Basic CSV split
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"') inQuotes = !inQuotes;
+                else if (line[i] === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += line[i];
+                }
+            }
+            result.push(current.trim());
+            return result.map(c => c.replace(/^"|"$/g, ''));
+        };
+
+        return (
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
+                    <tbody>
+                        {lines.map((line, index) => {
+                            // Header Detection (Special case for "Category" and "Details")
+                            const isTableHeading = (line.toLowerCase().includes('category') && (line.toLowerCase().includes('details') || line.toLowerCase().includes('value'))) ||
+                                (index === 0 && delimiter && !line.includes(':'));
+
+                            if (isTableHeading) {
+                                const headers = delimiter ? splitLineDelimited(line, delimiter) : [line];
+                                return (
+                                    <tr key={index} className="table-header-row">
+                                        {headers.map((h, i) => (
+                                            <td key={i} className="table-header-cell" colSpan={headers.length === 1 ? "2" : "1"}>
+                                                {h}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            }
+
+                            // Standard identification logic
+                            const isBullet = /^[•\* \-]/.test(line);
+                            const isBoldMarkdown = line.startsWith('**') && line.endsWith('**');
+                            const cleanLine = line.replace(/^[•\* \-\s\"\'\s]+/, '').replace(/[\"\'\s]+$/, '').replace(/\*\*/g, '');
+
+                            if (!cleanLine) return null;
+
+                            // 1. Delimited Format (CSV/Pipe)
+                            if (delimiter && line.includes(delimiter)) {
+                                const parts = splitLineDelimited(line, delimiter);
+                                if (parts.length >= 2) {
+                                    return (
+                                        <tr key={index} className="table-data-row">
+                                            <td className="table-label-cell">{parts[0]}</td>
+                                            <td className="table-value-cell">{renderFormattedText(parts.slice(1).join(' '), true)}</td>
+                                        </tr>
+                                    );
+                                }
+                            }
+
+                            // 2. Colon Format (Key: Value)
+                            if (cleanLine.includes(':')) {
+                                const colonIndex = cleanLine.indexOf(':');
+                                const label = cleanLine.substring(0, colonIndex).trim();
+                                const value = cleanLine.substring(colonIndex + 1).trim();
+
+                                return (
+                                    <tr key={index} className="table-data-row">
+                                        <td className="table-label-cell">{label}</td>
+                                        <td className="table-value-cell">{renderFormattedText(value, true)}</td>
+                                    </tr>
+                                );
+                            }
+
+                            // 3. Header/Title Format
+                            const endsWithPunctuation = /[.\?!]$/.test(cleanLine.trim());
+                            const isShort = cleanLine.length < 50;
+                            const alphaContent = cleanLine.replace(/[^a-zA-Z]/g, '');
+                            const isCapsLock = alphaContent.length > 2 && alphaContent === alphaContent.toUpperCase();
+                            const isProbablyHeader = isBoldMarkdown || isCapsLock || (!isBullet && isShort && !endsWithPunctuation);
+
+                            if (isProbablyHeader) {
+                                return (
+                                    <tr key={index} className="table-header-row">
+                                        <td colSpan="2" className="table-header-cell">
+                                            {cleanLine}
+                                        </td>
+                                    </tr>
+                                );
+                            }
+
+                            // 4. Default Row
+                            return (
+                                <tr key={index} className="table-data-row">
+                                    <td colSpan="2" className="table-full-cell">
+                                        {isBullet && <span className="bullet-dot">•</span>}
+                                        {renderFormattedText(cleanLine, true)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -462,42 +606,29 @@ const Opportunities = () => {
 
     return (
         <div className="opportunities-view">
-            <div className="opportunities-header-row">
-                <div className="search-bar-container-new">
-                    <div className="search-icon-wrapper">
-                        <img src={searchIcon} alt="" className="search-icon-gray" />
-                    </div>
+            <div className="opportunities-filters-row">
+                <div className="search-zip-container-new">
                     <input
                         type="text"
-                        className="search-input-new"
-                        placeholder="Search by the zip code listed on the drivers CDL"
+                        className="filter-zip-input"
+                        placeholder="Search job zipcode"
                         value={zipCode}
                         onChange={(e) => setZipCode(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                         maxLength="5"
                     />
-                    {searchZip && (
-                        <button className="btn-clear-inline" onClick={handleClearSearch}>&times;</button>
+                    {zipCode && (
+                        <button className="btn-clear-zip" onClick={handleClearSearch}>&times;</button>
                     )}
                 </div>
 
-                <div className="header-action-buttons">
-                    <button className="btn-header-action">
-                        <svg className="btn-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-                            <path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1Z" />
-                            <path d="m12 11 4 4" />
-                            <path d="m16 11-4 4" />
-                        </svg>
-                        Cheat Sheet
-                    </button>
-                    <button className="btn-header-action outline">
-                        <svg className="btn-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.27-2.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                        </svg>
-                        Carrier Contacts
-                    </button>
+                <div className="filter-buttons">
+                    <button className="btn-search-main" onClick={handleSearch}>Search</button>
                 </div>
+            </div>
+
+            <div className="jobs-count-row">
+                Showing {jobs.length} jobs
             </div>
 
             {loading ? (
@@ -505,577 +636,284 @@ const Opportunities = () => {
             ) : error ? (
                 <div className="status-msg error">{error}</div>
             ) : (
-                <div className="job-cards-list">
-                    {jobs.length === 0 ? (
-                        <div className="status-msg">
-                            {searchZip
-                                ? `No jobs found within hiring radius of ${searchZip}. Try a different zip code.`
-                                : 'No jobs available at the moment.'}
-                        </div>
-                    ) : (
-                        jobs.map(job => {
-                            const states = job.states ? job.states.split(',').map(s => s.trim()) : [];
-                            const carrierName = job.carrier?.name || 'Swift';
-                            const isExpanded = expandedJobId === job.id;
-
-                            return (
-                                <div key={job.id} className={`job-list-card ${isExpanded ? 'is-expanded' : ''}`}>
-                                    <div className="card-main-row">
-                                        <div className="card-left-content">
-                                            <div className="carrier-badge">{carrierName}</div>
-                                            <h3 className="job-card-title">{job.title}</h3>
-                                            <p className="job-card-pay">
-                                                {job.id === 1 ? `Average Weekly Pay: ${job.average_weekly_pay || '$1,300'}` : `${job.average_weekly_pay || '$1,200'} Weekly Average`}
-                                            </p>
-                                            <p className="job-card-hometime">{job.home_time || 'Daily'}</p>
-                                            <div className="job-card-tags">
-                                                {job.experience_levels && (
-                                                    <span className="card-tag tag-pink">{job.experience_levels.split(',')[0]}</span>
-                                                )}
-                                                {job.driver_types && (
-                                                    <span className="card-tag tag-blue-alt">{job.driver_types.split(',')[0]}</span>
-                                                )}
-                                                <span className="card-tag tag-green-alt">No Touch Freight</span>
-                                                {states.length > 0 && (
-                                                    <span className="card-tag tag-purp-alt">{states[0]}</span>
-                                                )}
+                <div className="jobs-table-container">
+                    <table className="jobs-listing-table">
+                        <thead>
+                            <tr className="table-header-row-static">
+                                <th className="th-carrier">Carrier</th>
+                                <th className="th-title">Title</th>
+                                <th className="th-status">Hiring</th>
+                                <th className="th-exp">Experience</th>
+                                <th className="th-driver">Driver Type</th>
+                                <th className="th-freight">Freight</th>
+                                <th className="th-hometime">Home Time</th>
+                                <th className="th-actions"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {jobs.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="empty-table-msg">
+                                        No jobs available matching your criteria.
+                                    </td>
+                                </tr>
+                            ) : (
+                                jobs.map(job => (
+                                    <tr key={job.id} className="job-table-row">
+                                        <td className="td-carrier">
+                                            {job.carrier?.logo ? (
+                                                <img src={job.carrier.logo} alt="" className="table-carrier-logo" />
+                                            ) : (
+                                                <div className="table-carrier-placeholder">{job.carrier?.name?.charAt(0)}</div>
+                                            )}
+                                        </td>
+                                        <td className="td-title">
+                                            <div className="job-title-link" onClick={() => handleViewDetails(job)}>{job.title}</div>
+                                            <div className="job-pay-sub">
+                                                <svg viewBox="0 0 24 24" className="pay-arrow-icon"><path d="M11 17l-5-5 5-5M18 12H6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                                Avg. Weekly Pay: {job.average_weekly_pay || '$1,300 - 2,100'}
                                             </div>
-                                        </div>
-
-                                        <div className="card-right-actions">
-                                            <div className="action-buttons-group">
-                                                <button
-                                                    className="btn-job-details-new"
-                                                    onClick={() => setSelectedJob(job)}
-                                                >
-                                                    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <circle cx="12" cy="12" r="3" />
-                                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-                                                    </svg>
-                                                    Job Details
-                                                </button>
-                                                <button className="btn-map-portal">
-                                                    <svg className="btn-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                        <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z" />
-                                                        <line x1="9" y1="3" x2="9" y2="21" />
-                                                        <line x1="15" y1="3" x2="15" y2="21" />
-                                                    </svg>
-                                                    Map/Portal/Sheet
-                                                </button>
-                                                <div style={{ position: 'relative' }}>
-                                                    <button
-                                                        className="btn-icon-only"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setOpenDropdownId(openDropdownId === job.id ? null : job.id);
-                                                        }}
-                                                    >
-                                                        <svg className="icon-dots" viewBox="0 0 24 24" fill="currentColor">
-                                                            <circle cx="5" cy="12" r="2" />
-                                                            <circle cx="12" cy="12" r="2" />
-                                                            <circle cx="19" cy="12" r="2" />
-                                                        </svg>
-                                                    </button>
-
-                                                    {openDropdownId === job.id && job.carrier && (
-                                                        <div
-                                                            className="carrier-dropdown-menu"
-                                                            style={{
-                                                                position: 'absolute',
-                                                                right: 0,
-                                                                top: '100%',
-                                                                marginTop: '0.5rem',
-                                                                background: 'white',
-                                                                border: '1px solid #e0e0e0',
-                                                                borderRadius: '8px',
-                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                                                                zIndex: 1000,
-                                                                minWidth: '200px',
-                                                                overflow: 'hidden'
-                                                            }}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        >
-                                                            {job.carrier.presentation && (
-                                                                <button
-                                                                    className="dropdown-menu-item"
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        padding: '0.75rem 1rem',
-                                                                        border: 'none',
-                                                                        background: 'transparent',
-                                                                        textAlign: 'left',
-                                                                        cursor: 'pointer',
-                                                                        fontSize: '0.9rem',
-                                                                        transition: 'background 0.2s'
-                                                                    }}
-                                                                    onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
-                                                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                                                    onClick={() => {
-                                                                        setCarrierSearchQuery('');
-                                                                        setCarrierInfoPanel({ job, type: 'presentation' });
-                                                                        setOpenDropdownId(null);
-                                                                    }}
-                                                                >
-                                                                    <img src={presentationIcon} alt="" className="btn-icon" /> Presentation
-                                                                </button>
-                                                            )}
-                                                            {job.carrier.pre_qualifications && (
-                                                                <button
-                                                                    className="dropdown-menu-item"
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        padding: '0.75rem 1rem',
-                                                                        border: 'none',
-                                                                        background: 'transparent',
-                                                                        textAlign: 'left',
-                                                                        cursor: 'pointer',
-                                                                        fontSize: '0.9rem',
-                                                                        transition: 'background 0.2s',
-                                                                        borderTop: job.carrier.presentation ? '1px solid #f0f0f0' : 'none'
-                                                                    }}
-                                                                    onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
-                                                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                                                    onClick={() => {
-                                                                        setCarrierSearchQuery('');
-                                                                        setCarrierInfoPanel({ job, type: 'pre_qualifications' });
-                                                                        setOpenDropdownId(null);
-                                                                    }}
-                                                                >
-                                                                    <img src={preQualIcon} alt="" className="btn-icon" /> Pre-qualifications
-                                                                </button>
-                                                            )}
-                                                            {job.carrier.app_process && (
-                                                                <button
-                                                                    className="dropdown-menu-item"
-                                                                    style={{
-                                                                        width: '100%',
-                                                                        padding: '0.75rem 1rem',
-                                                                        border: 'none',
-                                                                        background: 'transparent',
-                                                                        textAlign: 'left',
-                                                                        cursor: 'pointer',
-                                                                        fontSize: '0.9rem',
-                                                                        transition: 'background 0.2s',
-                                                                        borderTop: (job.carrier.presentation || job.carrier.pre_qualifications) ? '1px solid #f0f0f0' : 'none'
-                                                                    }}
-                                                                    onMouseEnter={(e) => e.target.style.background = '#f5f5f5'}
-                                                                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                                                                    onClick={() => {
-                                                                        setCarrierSearchQuery('');
-                                                                        setCarrierInfoPanel({ job, type: 'app_process' });
-                                                                        setOpenDropdownId(null);
-                                                                    }}
-                                                                >
-                                                                    <img src={appProcessIcon} alt="" className="btn-icon" /> App Process
-                                                                </button>
-                                                            )}
-                                                            {!job.carrier.presentation && !job.carrier.pre_qualifications && !job.carrier.app_process && (
-                                                                <div style={{ padding: '0.75rem 1rem', color: '#999', fontSize: '0.85rem' }}>
-                                                                    No carrier info available
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <button
-                                                    className={`btn-icon-only no-border expand-arrow ${isExpanded ? 'active' : ''}`}
-                                                    onClick={() => toggleExpand(job.id)}
-                                                >
-                                                    <svg className="icon-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                        <path d="m6 9 6 6 6-6" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {isExpanded && (
-                                        <div className="card-expanded-content">
-                                            {/* Location Source Transparency */}
-                                            {job.match_type === 'proximity' && (
-                                                <div className="location-transparency-badge proximity">
-                                                    📍 Proximity match - Just outside standard hiring area
-                                                </div>
-                                            )}
-                                            {job.match_type === 'state_level' && (
-                                                <div className="location-transparency-badge state-level">
-                                                    🌎 Regional match - Available in your state
-                                                </div>
-                                            )}
-                                            {job.location_source === 'carrier_hq' && !job.match_type && (
-                                                <div className="location-transparency-badge carrier-hq">
-                                                    📍 Location based on carrier headquarters
-                                                </div>
-                                            )}
-                                            {job.location_source === 'state_only' && !job.match_type && (
-                                                <div className="location-transparency-badge state-level">
-                                                    ⚠️ Regional opportunity - contact for exact location
-                                                </div>
-                                            )}
-
-                                            {/* Minimal Detail View in Card */}
-                                            <div className="card-detail-grid">
-                                                {(job.experience_levels || job.home_time || job.zip_code) && (
-                                                    <div className="detail-col">
-                                                        <h4 className="detail-group-title">Job Information</h4>
-                                                        {job.experience_levels && <div className="detail-row"><span className="detail-label">Experience:</span> <span className="detail-val">{job.experience_levels}</span></div>}
-                                                        {job.home_time && <div className="detail-row"><span className="detail-label">Home Time:</span> <span className="detail-val">{job.home_time}</span></div>}
-                                                        {job.zip_code && <div className="detail-row"><span className="detail-label">Zip Code:</span> <span className="detail-val">{job.zip_code}</span></div>}
-                                                    </div>
-                                                )}
-
-                                                {(job.average_weekly_pay || job.pay_range || job.bonus_offer) && (
-                                                    <div className="detail-col">
-                                                        <h4 className="detail-group-title">Pay & Benefits</h4>
-                                                        {job.average_weekly_pay && <div className="detail-row"><span className="detail-label">Weekly Pay:</span> <span className="detail-val">{job.average_weekly_pay}</span></div>}
-                                                        {job.pay_range && <div className="detail-row"><span className="detail-label">Pay Range:</span> <span className="detail-val">{job.pay_range}</span></div>}
-                                                        {job.bonus_offer && <div className="detail-row"><span className="detail-label">Bonus:</span> <span className="detail-val">{job.bonus_offer}</span></div>}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {job.job_details && (
-                                                <div className="card-detail-text-section">
-                                                    <h4 className="detail-group-title">Lane Information</h4>
-                                                    <div className="formatted-detail-text">{renderFormattedText(job.job_details)}</div>
-                                                </div>
-                                            )}
-
-                                            {/* Company Benefits & Info */}
-                                            {job.carrier && (
-                                                <div className="card-detail-text-section secondary">
-                                                    <h4 className="detail-group-title">Company Benefits & Info</h4>
-                                                    <div className="benefits-mini-list">
-                                                        {job.carrier.benefit_medical_dental_vision && <div className="benefit-pill">Medical/Dental/Vision</div>}
-                                                        {job.carrier.benefit_401k && <div className="benefit-pill">401(k)</div>}
-                                                        {job.carrier.benefit_paid_vacation && <div className="benefit-pill">Paid Vacation</div>}
-                                                        {job.carrier.benefit_stock_purchase && <div className="benefit-pill">Stock Purchase</div>}
-                                                    </div>
-                                                    <div className="formatted-detail-text compact">
-                                                        {job.carrier.benefit_other && renderFormattedText(job.carrier.benefit_other)}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Orientation */}
-                                            {(job.orientation_details || job.orientation_table) && (
-                                                <div className="card-detail-text-section secondary">
-                                                    <h4 className="detail-group-title">Orientation</h4>
-                                                    {job.orientation_details && (
-                                                        <div className="formatted-detail-text">{renderFormattedText(job.orientation_details)}</div>
-                                                    )}
-                                                    {job.orientation_table && (
-                                                        <div className="mini-table-container">
-                                                            {renderOrientationTable(job.orientation_table)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {/* Job Requirements */}
-                                            {(job.account_type || job.drug_test_type || job.sap_required || job.transmissions) && (
-                                                <div className="card-detail-text-section secondary">
-                                                    <h4 className="detail-group-title">Job Requirements</h4>
-                                                    <div className="requirements-mini-grid">
-                                                        {job.account_type && <div><strong>Account:</strong> {job.account_type}</div>}
-                                                        {job.drug_test_type && <div><strong>Drug Test:</strong> {job.drug_test_type}</div>}
-                                                        {job.sap_required && <div><strong>SAP:</strong> {job.sap_required}</div>}
-                                                        {job.transmissions && <div><strong>Transmission:</strong> {job.transmissions}</div>}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
-                    )}
+                                        </td>
+                                        <td className="td-status">
+                                            <span
+                                                className={`status-badge editable ${job.hiring_status === 'full' ? 'status-full' : 'status-open'}`}
+                                                onClick={(e) => toggleHiringStatus(e, job)}
+                                                title="Click to toggle status"
+                                            >
+                                                {job.hiring_status === 'full' ? 'Marked as full' : 'Open to hiring'}
+                                            </span>
+                                        </td>
+                                        <td className="td-exp">{job.experience_required || '12 months'}</td>
+                                        <td className="td-driver">{job.driver_type || 'Lease Purchase'}</td>
+                                        <td className="td-freight">{job.freight_type || 'Dry Van'}</td>
+                                        <td className="td-hometime">{job.home_time || 'Bi-Weekly'}</td>
+                                        <td className="td-actions">
+                                            <button className="btn-view-eye" onClick={() => handleViewDetails(job)}>
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-            )
-            }
+            )}
 
             {selectedJob && (
                 <div className="modal-overlay" onClick={() => setSelectedJob(null)}>
-                    <div className="modal-content job-details-modal" onClick={e => e.stopPropagation()}>
-                        <button className="close-btn" onClick={() => setSelectedJob(null)}>&times;</button>
-
-                        {/* Header */}
-                        <div className="job-modal-header">
-                            <div className="job-modal-tags">
-                                {selectedJob.carrier?.name && (
-                                    <span className="tag tag-company">{selectedJob.carrier.name}</span>
+                    <div className="modal-content job-details-modal tabbed-modal" onClick={e => e.stopPropagation()}>
+                        {/* MODAL HEADER */}
+                        <div className="tabbed-modal-header">
+                            <div className="modal-header-left">
+                                <button className="close-button-new" onClick={() => setSelectedJob(null)}>&times;</button>
+                                {selectedJob.carrier?.logo ? (
+                                    <img src={selectedJob.carrier.logo} alt={selectedJob.carrier.name} className="modal-carrier-logo" />
+                                ) : (
+                                    <div className="modal-carrier-logo-placeholder">{selectedJob.carrier?.name?.charAt(0)}</div>
                                 )}
-                                {selectedJob.equipment_type && (
-                                    <span className="tag tag-equipment">{selectedJob.equipment_type}</span>
-                                )}
-                            </div>
-                            <h1 className="job-modal-title">{selectedJob.title}</h1>
-                            <p className="job-modal-location">
-                                <svg style={{ width: '16px', height: '16px', display: 'inline-block', marginRight: '4px', verticalAlign: 'middle' }} viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                                </svg>
-                                {selectedJob.state}
-                            </p>
-                        </div>
-
-                        {/* SECTION 1: Basic Information */}
-                        <div className="job-details-section">
-                            <h4 className="section-header">Basic Information</h4>
-                            <div className="job-info-grid">
-                                {selectedJob.pay_range && <div className="info-item"><h4>Pay Range</h4><p>{selectedJob.pay_range}</p></div>}
-                                {selectedJob.average_weekly_pay && <div className="info-item"><h4>Avg. Weekly Pay</h4><p>{selectedJob.average_weekly_pay}</p></div>}
-                                {selectedJob.salary && <div className="info-item"><h4>Pay Info</h4><p>{selectedJob.salary}</p></div>}
-                                {selectedJob.pay_type && <div className="info-item"><h4>Pay Type</h4><p>{selectedJob.pay_type}</p></div>}
-                                {selectedJob.short_haul_pay && <div className="info-item"><h4>Short Haul Pay</h4><p>{selectedJob.short_haul_pay}</p></div>}
-                                {selectedJob.stop_pay && <div className="info-item"><h4>Stop Pay</h4><p>{selectedJob.stop_pay}</p></div>}
-                                {selectedJob.bonus_offer && <div className="info-item"><h4>Bonus</h4><p>{selectedJob.bonus_offer}</p></div>}
-                                {selectedJob.exact_home_time && <div className="info-item"><h4>Exact Home Time</h4><p>{selectedJob.exact_home_time}</p></div>}
-                                {selectedJob.home_time && <div className="info-item"><h4>Home Time</h4><p>{selectedJob.home_time}</p></div>}
-                                {selectedJob.load_unload_type && <div className="info-item"><h4>Load/Unload</h4><p>{selectedJob.load_unload_type}</p></div>}
-                                {selectedJob.unload_pay && <div className="info-item"><h4>Unload Pay</h4><p>{selectedJob.unload_pay}</p></div>}
-                            </div>
-                        </div>
-
-                        {/* SECTION 2: Lane Information */}
-                        <div className="lane-info-container">
-                            <div className="lane-side-label">Lane Information</div>
-                            <div className="lane-info-content">
-                                {selectedJob.job_details && (
-                                    <div className="lane-section">
-                                        <h5 className="lane-section-title">Job Details</h5>
-                                        <div className="lane-section-content">{renderFormattedText(selectedJob.job_details)}</div>
-                                    </div>
-                                )}
-                                {selectedJob.account_overview && (
-                                    <div className="lane-section">
-                                        <h5 className="lane-section-title">Account Overview</h5>
-                                        <div className="lane-section-content">{renderFormattedText(selectedJob.account_overview)}</div>
-                                    </div>
-                                )}
-                                {selectedJob.administrative_details && (
-                                    <div className="lane-section">
-                                        <h5 className="lane-section-title">Administrative Details</h5>
-                                        <div className="lane-section-content">{renderFormattedText(selectedJob.administrative_details)}</div>
-                                    </div>
-                                )}
-                                {selectedJob.description && (
-                                    <div className="lane-section">
-                                        <h5 className="lane-section-title">Additional Information</h5>
-                                        <div className="lane-section-content">{renderFormattedText(selectedJob.description)}</div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* SECTION 3: Company Benefits & Info */}
-                        {selectedJob.carrier && (
-                            <div className="lane-info-container">
-                                <div className="lane-side-label">Company Benefits & Info</div>
-                                <div className="lane-info-content">
-                                    {selectedJob.carrier.benefit_medical_dental_vision && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Medical/Dental/Vision</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_medical_dental_vision)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_401k && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">401(k)</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_401k)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_paid_vacation && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Paid Vacation</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_paid_vacation)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_stock_purchase && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Stock Purchase</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_stock_purchase)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_prescription_drug && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Prescription Drugs</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_prescription_drug)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_tuition_program && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Tuition Program</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_tuition_program)}</div>
-                                        </div>
-                                    )}
-                                    {selectedJob.carrier.benefit_other && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Other Benefits</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.carrier.benefit_other)}</div>
-                                        </div>
-                                    )}
-
-
+                                <div className="modal-title-box">
+                                    <h2 className="modal-main-title">{selectedJob.title}</h2>
+                                    <p className="modal-sub-title">↳ <span>{selectedJob.carrier?.name}</span></p>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
-                        {/* SECTION 4: Orientation */}
-                        {(selectedJob.orientation_details || selectedJob.orientation_table) && (
-                            <div className="lane-info-container">
-                                <div className="lane-side-label">Orientation</div>
-                                <div className="lane-info-content">
-                                    {selectedJob.orientation_details && (
-                                        <div className="lane-section">
-                                            <div className="lane-section-content">{renderFormattedText(selectedJob.orientation_details)}</div>
+                        <div className="tabbed-modal-body">
+                            {/* SIDEBAR TABS */}
+                            <div className="modal-tabs-sidebar">
+                                <button className={`modal-tab-btn ${activeTab === 'description' ? 'active' : ''}`} onClick={() => setActiveTab('description')}>Job Description</button>
+                                <button className={`modal-tab-btn ${activeTab === 'pay' ? 'active' : ''}`} onClick={() => setActiveTab('pay')}>Pay Details</button>
+                                <button className={`modal-tab-btn ${activeTab === 'equipment' ? 'active' : ''}`} onClick={() => setActiveTab('equipment')}>Equipment</button>
+                                <button className={`modal-tab-btn ${activeTab === 'disqualifiers' ? 'active' : ''}`} onClick={() => setActiveTab('disqualifiers')}>Key Disqualifiers</button>
+                                <button className={`modal-tab-btn ${activeTab === 'benefits' ? 'active' : ''}`} onClick={() => setActiveTab('benefits')}>Benefits</button>
+                                <button className={`modal-tab-btn ${activeTab === 'requirements' ? 'active' : ''}`} onClick={() => setActiveTab('requirements')}>Requirements</button>
+                                <button className={`modal-tab-btn ${activeTab === 'app_process' ? 'active' : ''}`} onClick={() => setActiveTab('app_process')}>Application Process</button>
+                            </div>
+
+                            {/* MAIN CONTENT AREA */}
+                            <div className="modal-tab-content">
+                                <div className="tab-pane-container">
+                                    {activeTab === 'description' && (
+                                        <div className="job-summary-container">
+                                            {renderKeyDataTable(selectedJob.job_details)}
                                         </div>
                                     )}
-                                    {selectedJob.orientation_table && (
-                                        <div className="lane-section">
-                                            <div className="orientation-table-container">
-                                                <div className="orientation-table-data">{renderOrientationTable(selectedJob.orientation_table)}</div>
-                                            </div>
+
+                                    {activeTab === 'pay' && (
+                                        <div className="job-summary-container">
+                                            {renderKeyDataTable(selectedJob.pay_details)}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'equipment' && (
+                                        <div className="job-summary-container">
+                                            {renderKeyDataTable(selectedJob.equipment_details)}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'disqualifiers' && (
+                                        <div className="job-summary-container">
+                                            {renderKeyDataTable(selectedJob.key_disqualifiers)}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'benefits' && (
+                                        <div className="premium-table-wrapper">
+                                            <table className="premium-data-table">
+                                                <tbody>
+                                                    <tr className="table-header-row">
+                                                        <td className="table-header-cell">Category</td>
+                                                        <td className="table-header-cell">Details</td>
+                                                    </tr>
+                                                    {selectedJob.carrier?.benefit_medical_dental_vision && (
+                                                        <tr className="table-data-row">
+                                                            <td className="table-label-cell">Medical / Dental / Vision</td>
+                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_medical_dental_vision}</td>
+                                                        </tr>
+                                                    )}
+                                                    {selectedJob.carrier?.benefit_401k && (
+                                                        <tr className="table-data-row">
+                                                            <td className="table-label-cell">401(k) Retirement</td>
+                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_401k}</td>
+                                                        </tr>
+                                                    )}
+                                                    {selectedJob.carrier?.benefit_paid_vacation && (
+                                                        <tr className="table-data-row">
+                                                            <td className="table-label-cell">Paid Vacation</td>
+                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_paid_vacation}</td>
+                                                        </tr>
+                                                    )}
+                                                    {selectedJob.carrier?.benefit_weekly_paycheck && (
+                                                        <tr className="table-data-row">
+                                                            <td className="table-label-cell">Weekly Pay</td>
+                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_weekly_paycheck}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'requirements' && (
+                                        <div className="job-summary-container">
+                                            {renderKeyDataTable(selectedJob.requirements_details)}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'app_process' && (
+                                        <div className="lane-section-content">
+                                            {selectedJob.carrier?.app_process ? renderAppProcess(selectedJob.carrier.app_process) : 'Please contact the carrier for application details.'}
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        )}
-
-                        {/* SECTION 5: Job Requirements */}
-                        <div className="job-details-section">
-                            <h4 className="section-header">Job Requirements</h4>
-                            <div className="requirements-badges">
-                                {selectedJob.trainees_accepted && <div className="req-badge"><strong>Trainees Accepted:</strong> {selectedJob.trainees_accepted}</div>}
-                                {selectedJob.account_type && <div className="req-badge"><strong>Account Type:</strong> {selectedJob.account_type}</div>}
-                                {selectedJob.cameras && <div className="req-badge"><strong>Cameras:</strong> {selectedJob.cameras}</div>}
-                                {selectedJob.driver_types && <div className="req-badge"><strong>Driver Types:</strong> {selectedJob.driver_types}</div>}
-                                {selectedJob.drug_test_type && <div className="req-badge"><strong>Drug Test:</strong> {selectedJob.drug_test_type}</div>}
-                                {selectedJob.experience_levels && <div className="req-badge"><strong>Experience:</strong> {selectedJob.experience_levels}</div>}
-                                {selectedJob.freight_types && <div className="req-badge"><strong>Freight Types:</strong> {selectedJob.freight_types}</div>}
-                                {selectedJob.sap_required && <div className="req-badge"><strong>SAP Required:</strong> {selectedJob.sap_required}</div>}
-                                {selectedJob.transmissions && <div className="req-badge"><strong>Transmissions:</strong> {selectedJob.transmissions}</div>}
-                                {selectedJob.states && <div className="req-badge"><strong>States:</strong> {selectedJob.states}</div>}
-                            </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="modal-actions">
-                            <button
-                                className="btn-primary btn-apply"
-                                onClick={() => window.open(selectedJob.apply_link || '#', '_blank')}
-                            >
-                                Apply for this Position
-                            </button>
-                            <button
-                                className="btn-secondary"
-                                onClick={() => setSelectedJob(null)}
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
                 </div>
             )}
 
             {/* Carrier Info Side Panel */}
-            {carrierInfoPanel && (
-                <div className="modal-overlay" onClick={() => setCarrierInfoPanel(null)}>
-                    <div className="modal-content job-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px' }}>
-                        {/* Sticky Header Wrapper */}
-                        <div className="modal-sticky-header">
-                            <button className="close-btn" onClick={() => setCarrierInfoPanel(null)}>&times;</button>
+            {
+                carrierInfoPanel && (
+                    <div className="modal-overlay" onClick={() => setCarrierInfoPanel(null)}>
+                        <div className="modal-content job-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px' }}>
+                            {/* Sticky Header Wrapper */}
+                            <div className="modal-sticky-header">
+                                <button className="close-btn" onClick={() => setCarrierInfoPanel(null)}>&times;</button>
 
-                            <div className="job-modal-header" style={{ border: 'none', padding: 0, marginBottom: '1.5rem' }}>
-                                <div className="job-modal-tags">
-                                    {carrierInfoPanel.job.carrier?.name && (
-                                        <span className="tag tag-company">{carrierInfoPanel.job.carrier.name}</span>
-                                    )}
+                                <div className="job-modal-header" style={{ border: 'none', padding: 0, marginBottom: '1.5rem' }}>
+                                    <div className="job-modal-tags">
+                                        {carrierInfoPanel.job.carrier?.name && (
+                                            <span className="tag tag-company">{carrierInfoPanel.job.carrier.name}</span>
+                                        )}
+                                    </div>
+                                    <h1 className="job-modal-title" style={{ display: 'flex', alignItems: 'center' }}>
+                                        {carrierInfoPanel.type === 'presentation' && (
+                                            <><img src={presentationIcon} alt="" className="btn-icon" /> Presentation</>
+                                        )}
+                                        {carrierInfoPanel.type === 'pre_qualifications' && (
+                                            <><img src={preQualIcon} alt="" className="btn-icon" /> Pre-Qualifications</>
+                                        )}
+                                        {carrierInfoPanel.type === 'app_process' && (
+                                            <><img src={appProcessIcon} alt="" className="btn-icon" /> Application Process</>
+                                        )}
+                                    </h1>
+                                    <p className="job-modal-location">
+                                        {carrierInfoPanel.job.title}
+                                    </p>
                                 </div>
-                                <h1 className="job-modal-title" style={{ display: 'flex', alignItems: 'center' }}>
-                                    {carrierInfoPanel.type === 'presentation' && (
-                                        <><img src={presentationIcon} alt="" className="btn-icon" /> Presentation</>
-                                    )}
-                                    {carrierInfoPanel.type === 'pre_qualifications' && (
-                                        <><img src={preQualIcon} alt="" className="btn-icon" /> Pre-Qualifications</>
-                                    )}
-                                    {carrierInfoPanel.type === 'app_process' && (
-                                        <><img src={appProcessIcon} alt="" className="btn-icon" /> Application Process</>
-                                    )}
-                                </h1>
-                                <p className="job-modal-location">
-                                    {carrierInfoPanel.job.title}
-                                </p>
+
+                                {/* Search Bar for Info */}
+                                {(carrierInfoPanel.type === 'presentation' || carrierInfoPanel.type === 'pre_qualifications') && (
+                                    <div className="carrier-info-search-container">
+                                        <div className="search-box">
+                                            <img src={searchIcon} alt="search" className="search-icon" style={{ filter: 'grayscale(1) opacity(0.5)' }} />
+                                            <input
+                                                type="text"
+                                                className="search-input"
+                                                placeholder={`Search in ${carrierInfoPanel.type === 'presentation' ? 'presentation' : 'pre-qualifications'}...`}
+                                                value={carrierSearchQuery}
+                                                onChange={(e) => setCarrierSearchQuery(e.target.value)}
+                                            />
+                                            {carrierSearchQuery && (
+                                                <button
+                                                    className="clear-search-btn"
+                                                    onClick={() => setCarrierSearchQuery('')}
+                                                    style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}
+                                                >
+                                                    &times;
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                             </div>
 
-                            {/* Search Bar for Info */}
-                            {(carrierInfoPanel.type === 'presentation' || carrierInfoPanel.type === 'pre_qualifications') && (
-                                <div className="carrier-info-search-container">
-                                    <div className="search-box">
-                                        <img src={searchIcon} alt="search" className="search-icon" style={{ filter: 'grayscale(1) opacity(0.5)' }} />
-                                        <input
-                                            type="text"
-                                            className="search-input"
-                                            placeholder={`Search in ${carrierInfoPanel.type === 'presentation' ? 'presentation' : 'pre-qualifications'}...`}
-                                            value={carrierSearchQuery}
-                                            onChange={(e) => setCarrierSearchQuery(e.target.value)}
-                                        />
-                                        {carrierSearchQuery && (
-                                            <button
-                                                className="clear-search-btn"
-                                                onClick={() => setCarrierSearchQuery('')}
-                                                style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#94a3b8' }}
-                                            >
-                                                &times;
-                                            </button>
+
+                            {/* Content */}
+                            <div className="lane-info-container">
+                                <div className="lane-side-label">
+                                    {carrierInfoPanel.type === 'presentation' && 'Presentation'}
+                                    {carrierInfoPanel.type === 'pre_qualifications' && 'Pre-Qualifications'}
+                                    {carrierInfoPanel.type === 'app_process' && 'Application Process'}
+                                </div>
+                                <div className="lane-info-content">
+                                    <div className="lane-section">
+                                        {carrierInfoPanel.type === 'presentation' && carrierInfoPanel.job.carrier?.presentation && (
+                                            <div className="lane-section-content">
+                                                {renderGenericTable(carrierInfoPanel.job.carrier.presentation, carrierSearchQuery)}
+                                            </div>
+                                        )}
+                                        {carrierInfoPanel.type === 'pre_qualifications' && carrierInfoPanel.job.carrier?.pre_qualifications && (
+                                            <div className="lane-section-content">
+                                                {renderGenericTable(carrierInfoPanel.job.carrier.pre_qualifications, carrierSearchQuery)}
+                                            </div>
+                                        )}
+                                        {carrierInfoPanel.type === 'app_process' && carrierInfoPanel.job.carrier?.app_process && (
+                                            <div className="lane-section-content">
+                                                {renderAppProcess(carrierInfoPanel.job.carrier.app_process)}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
-                            )}
-
-                        </div>
-
-
-                        {/* Content */}
-                        <div className="lane-info-container">
-                            <div className="lane-side-label">
-                                {carrierInfoPanel.type === 'presentation' && 'Presentation'}
-                                {carrierInfoPanel.type === 'pre_qualifications' && 'Pre-Qualifications'}
-                                {carrierInfoPanel.type === 'app_process' && 'Application Process'}
                             </div>
-                            <div className="lane-info-content">
-                                <div className="lane-section">
-                                    {carrierInfoPanel.type === 'presentation' && carrierInfoPanel.job.carrier?.presentation && (
-                                        <div className="lane-section-content">
-                                            {renderGenericTable(carrierInfoPanel.job.carrier.presentation, carrierSearchQuery)}
-                                        </div>
-                                    )}
-                                    {carrierInfoPanel.type === 'pre_qualifications' && carrierInfoPanel.job.carrier?.pre_qualifications && (
-                                        <div className="lane-section-content">
-                                            {renderGenericTable(carrierInfoPanel.job.carrier.pre_qualifications, carrierSearchQuery)}
-                                        </div>
-                                    )}
-                                    {carrierInfoPanel.type === 'app_process' && carrierInfoPanel.job.carrier?.app_process && (
-                                        <div className="lane-section-content">
-                                            {renderAppProcess(carrierInfoPanel.job.carrier.app_process)}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* Action Buttons */}
-                        <div className="modal-actions">
-                            <button
-                                className="btn-secondary"
-                                onClick={() => setCarrierInfoPanel(null)}
-                            >
-                                Close
-                            </button>
+                            {/* Action Buttons */}
+                            <div className="modal-actions">
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => setCarrierInfoPanel(null)}
+                                >
+                                    Close
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

@@ -64,6 +64,11 @@ def import_jobs(csv_file_path):
                 'sap_required': row.get('sap_required'),
                 'transmissions': row.get('transmissions'),
                 'states': row.get('states'),
+                'avg_weekly_miles': row.get('avg_weekly_miles'),
+                'no_touch_freight': row.get('no_touch_freight'),
+                'equipment_engine': row.get('equipment_engine'),
+                'equipment_bunks': row.get('equipment_bunks'),
+                'key_disqualifiers': row.get('key_disqualifiers'),
             }
             
             job, created = Job.objects.update_or_create(

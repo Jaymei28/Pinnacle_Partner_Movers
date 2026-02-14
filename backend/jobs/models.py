@@ -73,191 +73,63 @@ class Job(models.Model):
     state = models.CharField(max_length=200, help_text="Primary state for the job")
     zip_code = models.CharField(max_length=10, help_text="Location zip code")
     hiring_radius_miles = models.IntegerField(default=50, help_text="Hiring radius in miles")
+    
+    # ========== SECTION 2: CONSOLIDATED FIELDS (1 Field Per Section) ==========
+    
+    # 1. Job Details (Includes highlights, account overview, etc.)
+    job_details = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Paste all job description details, account overview, and highlights here."
+    )
+    
+    # 2. Pay Details (Includes range, weekly pay, bonuses, etc.)
+    pay_details = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Paste all pay details, bonuses, and compensation info here."
+    )
+    
+    # 3. Equipment (Includes engine, bunks, transmissions, cameras, etc.)
+    equipment_details = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Paste all equipment-related details here."
+    )
+    
+    # 4. Key Disqualifiers (Standalone field)
+    key_disqualifiers = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Key disqualifiers for this job."
+    )
+    
+    # 5. Requirements (Includes experience, drug test, sap, states, etc.)
+    requirements_details = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Paste all job requirements and qualification details here."
+    )
+    
+    HIRING_STATUS_CHOICES = [
+        ('open', 'Open to hiring'),
+        ('full', 'Marked as full'),
+    ]
+    hiring_status = models.CharField(
+        max_length=10, 
+        choices=HIRING_STATUS_CHOICES, 
+        default='open',
+        help_text="Current hiring status of the job"
+    )
+
+    # Metadata & Tracking
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    
-    # Pay Details
-    pay_range = models.CharField(max_length=100, blank=True, null=True, help_text="Pay range (e.g., $0.43-$0.51 CPM)")
-    average_weekly_pay = models.CharField(max_length=50, blank=True, null=True, help_text="Average weekly pay")
-    salary = models.CharField(max_length=100, blank=True, null=True, help_text="General pay information")
-    pay_type = models.CharField(max_length=50, blank=True, null=True, help_text="Weekly, Hourly, Per Mile, etc.")
-    short_haul_pay = models.CharField(max_length=100, blank=True, null=True, help_text="Pay for short hauls")
-    stop_pay = models.CharField(max_length=50, blank=True, null=True, help_text="Pay per stop")
-    bonus_offer = models.CharField(max_length=200, blank=True, null=True, help_text="Bonus offers")
-    
-    # Exact Home Time
-    exact_home_time = models.CharField(max_length=200, blank=True, null=True, help_text="Specific home time details")
-    home_time = models.CharField(max_length=100, blank=True, null=True, help_text="General home time (Daily, Weekly, etc.)")
-    
-    # Load/Unload
-    load_unload_type = models.CharField(max_length=100, blank=True, null=True, help_text="Live Load, Drop and Hook, etc.")
-    unload_pay = models.CharField(max_length=50, blank=True, null=True, help_text="Pay for unloading")
-    
-    # ========== SECTION 2: LANE INFORMATION ==========
-    # Consolidated text areas for easy copy-paste data entry
-    job_details = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Paste all job details here (routes, schedule, equipment, etc.)"
-    )
-    
-    account_overview = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Paste all account overview information here"
-    )
-    
-    administrative_details = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Paste all administrative details here (managers, contacts, cost center, etc.)"
-    )
-    
-    # Keep description for general lane information
-    description = models.TextField(
-        blank=True,
-        null=True,
-        help_text="General job description and lane information"
-    )
-    
-    # ========== SECTION 3: COMPANY BENEFITS & INFO ==========
-    # Benefits are pulled from the related Carrier model
-    # No additional fields needed here
-    
-    # ========== SECTION 4: ORIENTATION ==========
-    # Consolidated fields for easy data entry
-    orientation_details = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Paste all orientation details here (location, duration, pay, lodging, meals, transportation)"
-    )
-    
-    orientation_table = models.TextField(
-        blank=True,
-        null=True,
-        help_text="Optional: Paste orientation table data here"
-    )
-    
-    # ========== SECTION 5: JOB REQUIREMENTS ==========
-    # Multi-Select Fields (stored as comma-separated values)
-    trainees_accepted = models.CharField(
-        max_length=200, 
-        blank=True, 
-        null=True,
-        help_text="Trainee acceptance options (comma-separated): Yes, No, Conditional"
-    )
-    
-    account_type = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Account types (comma-separated): Dedicated, OTR, Regional, Local"
-    )
-    
-    cameras = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Camera types (comma-separated): Inward Facing, Outward Facing, Both, None"
-    )
-    
-    driver_types = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Driver types (comma-separated): Company Driver, Owner Operator, Lease Purchase"
-    )
-    
-    drug_test_type = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Drug test types (comma-separated): Hair Follicle, Urinalysis, Both"
-    )
-    
-    experience_levels = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Experience levels (comma-separated): 0 months, 3 months, 6 months, 12 months, 24 months"
-    )
-    
-    freight_types = models.CharField(
-        max_length=300,
-        blank=True,
-        null=True,
-        help_text="Freight types (comma-separated): Dry Van, Reefer, Flatbed, Tanker, Intermodal, etc."
-    )
-    
-    sap_required = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
-        help_text="SAP requirement (comma-separated): Yes, No, Conditional"
-    )
-    
-    transmissions = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Transmission types (comma-separated): Automatic, Manual, Both"
-    )
-    
-    states = models.CharField(
-        max_length=1000,
-        blank=True,
-        null=True,
-        help_text="States covered (comma-separated state codes): AL, AK, AZ, etc."
-    )
-    
-    # Geocoding fields for distance-based search
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        blank=True,
-        null=True,
-        help_text="Auto-populated from ZIP code or carrier HQ"
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        blank=True,
-        null=True,
-        help_text="Auto-populated from ZIP code or carrier HQ"
-    )
-    location_source = models.CharField(
-        max_length=20,
-        choices=[
-            ('job_zip', 'Job ZIP Code'),
-            ('carrier_hq', 'Carrier Headquarters'),
-            ('state_only', 'State Level Only'),
-        ],
-        blank=True,
-        null=True,
-        help_text="Source of location data for transparency"
-    )
-    
-    # Zip Code Source Tracking
-    zip_source = models.CharField(
-        max_length=20,
-        blank=True,
-        null=True,
-        choices=[
-            ('manual', 'Manually Entered'),
-            ('extracted', 'Extracted from Description'),
-            ('geocoded', 'Auto-Geocoded from Location'),
-            ('carrier_hq', 'Carrier Headquarters'),
-            ('state_capital', 'State Capital Default')
-        ],
-        help_text="Source of zip code data"
-    )
-    
-    # Metadata
-    is_active = models.BooleanField(default=True, help_text="Whether this job is active/visible")
+    location_source = models.CharField(max_length=50, blank=True, null=True)
+    zip_source = models.CharField(max_length=50, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
-    # Track the raw dates from the data source
     source_create_date = models.CharField(max_length=100, blank=True, null=True)
     source_modified_date = models.CharField(max_length=100, blank=True, null=True)
 
