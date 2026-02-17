@@ -10,147 +10,90 @@ sys.path.append(base_dir)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'jobstream_backend.settings')
 django.setup()
 
-from jobs.models import Job
+from jobs.models import Job, Carrier
 
 def clean_text(text):
     """Clean and normalize text content"""
-    if not text or text == 'N/A':
+    if not text or text == 'N/A' or str(text).lower() == 'nan':
         return None
     # Remove extra whitespace and newlines
-    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\s+', ' ', str(text))
     return text.strip()
-
-def extract_location_from_lane(lane_info):
-    """Extract location from lane information"""
-    if not lane_info:
-        return "Unknown Location"
-    
-    # Try to extract location from patterns like "Walmart - Arcadia, FL"
-    match = re.search(r'[-–]\s*([A-Za-z\s]+),\s*([A-Z]{2})', lane_info)
-    if match:
-        city = match.group(1).strip()
-        state = match.group(2).strip()
-        return f"{city}, {state}"
-    
-    return lane_info[:100]
 
 def parse_csv_file(file_path):
     """Parse the CSV file and extract job listings"""
     jobs = []
     
     with open(file_path, 'r', encoding='utf-8') as f:
-        # Read CSV manually to handle duplicate headers
         csv_reader = csv.reader(f)
-        headers = next(csv_reader)  # Get headers
-        
-        print(f"CSV Headers: {headers[:10]}")  # Debug
+        headers = next(csv_reader)
         
         for idx, row_values in enumerate(csv_reader):
             try:
-                # Create a dict manually, using first occurrence of duplicate headers
+                # Map row to headers
                 row = {}
                 for i, header in enumerate(headers):
-                    if header not in row and i < len(row_values):  # Only use first occurrence
-                        row[header] = row_values[i]
+                    if i < len(row_values):
+                        # Handle duplicate headers by appending index if needed, 
+                        # but we know Col 0 is short Lane Info and Col 8 is detailed Lane Info
+                        key = header if header not in row else f"{header}_{i}"
+                        row[key] = row_values[i]
                 
-                # Extract basic information
-                company = clean_text(row.get('Carriers', '')) or 'Unknown Company'
-                short_lane_info = clean_text(row.get('Lane Information', ''))  # Now gets column 1
+                # Extract fields
+                carrier_name = clean_text(row.get('Carriers', 'Unknown Carrier'))
+                title = clean_text(row.get('Lane Information', 'Job Opportunity'))
+                location_details = row_values[8] if len(row_values) > 8 else ""
                 pay = clean_text(row.get('Pay', ''))
                 home_time = clean_text(row.get('Exact Home Time', ''))
-                load_unload = clean_text(row.get('Load/Unload', ''))
-                driver_type = clean_text(row.get('Driver Type', ''))
-                orientation = clean_text(row.get('Orientation', ''))
-                benefits = clean_text(row.get('Benefits', ''))
                 experience = clean_text(row.get('Experience', ''))
                 freight_types = clean_text(row.get('Freight Types', ''))
+                benefits = clean_text(row.get('Benefits', ''))
+                orientation = clean_text(row.get('Orientation', ''))
+                load_unload = clean_text(row.get('Load/Unload', ''))
+                multi_zip = clean_text(row.get('Location Zip Codes', ''))
                 state = clean_text(row.get('State', ''))
-                additional_pay = clean_text(row.get('Additional Pay Info', ''))
                 
-                # Get the detailed lane info from column 8 (second "Lane Information")
-                detailed_lane_info = row_values[8] if len(row_values) > 8 else ""
+                # Construct combined fields for the new model sections
                 
-                # Use short lane info as title
-                if short_lane_info:
-                    title = short_lane_info
-                    location = extract_location_from_lane(title)
-                else:
-                    title = f"{company} - Unknown Location"
-                    location = "Unknown Location"
+                # 1. Job Details
+                job_details_parts = []
+                if location_details: job_details_parts.append(location_details)
+                if home_time: job_details_parts.append(f"Home Time: {home_time}")
+                if freight_types: job_details_parts.append(f"Freight Types: {freight_types}")
+                if experience: job_details_parts.append(f"Experience Required: {experience}")
+                job_details = "\n\n".join(job_details_parts)
                 
-                # Build comprehensive description using detailed lane info
-                description_parts = []
+                # 2. Pay Details
+                pay_details_parts = []
+                if pay: pay_details_parts.append(pay)
+                if benefits: pay_details_parts.append(f"Benefits: {benefits}")
+                pay_details = "\n\n".join(pay_details_parts)
                 
-                if detailed_lane_info:
-                    description_parts.append(detailed_lane_info)
+                # 3. Equipment
+                equipment_parts = []
+                if load_unload: equipment_parts.append(f"Load/Unload: {load_unload}")
+                if orientation: equipment_parts.append(f"Orientation: {orientation}")
+                equipment_details = "\n\n".join(equipment_parts)
                 
-                if pay:
-                    description_parts.append(f"\\n\\n**Pay Information:**\\n{pay}")
-                
-                if additional_pay:
-                    description_parts.append(f"\\n**Additional Pay Info:**\\n{additional_pay}")
-                
-                if home_time:
-                    description_parts.append(f"\\n**Home Time:**\\n{home_time}")
-                
-                if load_unload:
-                    description_parts.append(f"\\n**Load/Unload:**\\n{load_unload}")
-                
-                if experience:
-                    description_parts.append(f"\\n**Experience Required:**\\n{experience}")
-                
-                if driver_type:
-                    description_parts.append(f"\\n**Driver Type:**\\n{driver_type}")
-                
-                if freight_types:
-                    description_parts.append(f"\\n**Freight Types:**\\n{freight_types}")
-                
-                if orientation:
-                    description_parts.append(f"\\n**Orientation:**\\n{orientation}")
-                
-                description = ''.join(description_parts) if description_parts else "No additional details available."
-                
-                # Determine equipment type from freight types
-                equipment_type = 'Dry Van'  # Default
-                if freight_types:
-                    if 'Reefer' in freight_types:
-                        equipment_type = 'Reefer'
-                    elif 'Flatbed' in freight_types:
-                        equipment_type = 'Flatbed'
-                    elif 'Container' in freight_types or 'Intermodal' in freight_types:
-                        equipment_type = 'Intermodal'
-                
-                # Create job data
+                # 4. Additional Info
+                additional_info = f"Source: CSV Import - Row {idx+1}"
+
                 job_data = {
+                    'carrier_name': carrier_name,
                     'title': title[:200],
-                    'company': company[:200],
-                    'location': location[:200],
-                    'zip_code': '00000',  # Default
-                    'description': description,
-                    'job_type': 'full-time',
-                    
-                    # Benefits
-                    'benefit_other_info': benefits if benefits else None,
-                    
-                    # Application
+                    'state': state[:200] if state else None,
+                    'job_details': job_details,
+                    'pay_details': pay_details,
+                    'equipment_details': equipment_details,
+                    'additional_info': additional_info,
+                    'multi_zip_codes': multi_zip,
                     'apply_link': 'https://classarecruiting.com',
                 }
                 
                 jobs.append(job_data)
                 
-                # Print first job for debugging
-                if idx == 0:
-                    print("\\n--- First Job Preview ---")
-                    print(f"Title: {job_data['title']}")
-                    print(f"Company: {job_data['company']}")
-                    print(f"Location: {job_data['location']}")
-                    print(f"Salary: {job_data['salary']}")
-                    print(f"Home Time: {job_data['home_time']}")
-                
             except Exception as e:
                 print(f"Error parsing row {idx + 1}: {e}")
-                import traceback
-                traceback.print_exc()
                 continue
     
     return jobs
@@ -158,53 +101,43 @@ def parse_csv_file(file_path):
 def import_jobs(csv_file_path):
     """Import jobs from CSV file into database"""
     print(f"Parsing CSV file: {csv_file_path}")
-    jobs = parse_csv_file(csv_file_path)
+    jobs_to_import = parse_csv_file(csv_file_path)
     
-    print(f"\\nParsed {len(jobs)} job listings from CSV")
+    print(f"\nParsed {len(jobs_to_import)} job listings from CSV")
     
     created_count = 0
     updated_count = 0
     
-    for job_data in jobs:
+    for data in jobs_to_import:
         try:
-            # Try to find existing job by company and location
+            # 1. Get or create Carrier
+            carrier, _ = Carrier.objects.get_or_create(name=data.pop('carrier_name'))
+            
+            # 2. Try to find existing job by carrier, title, and state to deduplicate
             existing_job = Job.objects.filter(
-                company=job_data['company'],
-                location=job_data['location']
+                carrier=carrier,
+                title=data['title'],
+                state=data['state']
             ).first()
             
             if existing_job:
-                # Update existing job
-                for key, value in job_data.items():
+                for key, value in data.items():
                     setattr(existing_job, key, value)
                 existing_job.save()
                 updated_count += 1
-                print(f"Updated: {job_data['title']}")
             else:
-                # Create new job
-                Job.objects.create(**job_data)
+                Job.objects.create(carrier=carrier, **data)
                 created_count += 1
-                print(f"Created: {job_data['title']}")
                 
         except Exception as e:
-            print(f"Error importing job '{job_data.get('title', 'Unknown')}': {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"Error importing job: {e}")
             continue
     
-    print(f"\\n{'='*60}")
-    print(f"Import Summary:")
-    print(f"  Created: {created_count} jobs")
-    print(f"  Updated: {updated_count} jobs")
-    print(f"  Total:   {created_count + updated_count} jobs")
-    print(f"{'='*60}")
+    print(f"\nImport Summary: Created {created_count}, Updated {updated_count}")
 
 if __name__ == '__main__':
-    # Path to the CSV file
-    csv_file = os.path.join(os.path.dirname(__file__), '..', 'Job Ops.csv')
-    
+    csv_file = os.path.join(os.path.dirname(__file__), '..', 'Jobs.csv')
     if not os.path.exists(csv_file):
         print(f"Error: CSV file not found at {csv_file}")
         sys.exit(1)
-    
     import_jobs(csv_file)
