@@ -45,7 +45,8 @@ class JobList(generics.ListCreateAPIView):
                 return Response(results)
             else:
                 # Return all active jobs without distance filtering
-                queryset = Job.objects.filter(is_active=True)
+                # Optimize with select_related and prefetch_related
+                queryset = Job.objects.filter(is_active=True).select_related('carrier').prefetch_related('additional_locations')
                 serializer = self.get_serializer(queryset, many=True)
                 return Response(serializer.data)
         except Exception as e:

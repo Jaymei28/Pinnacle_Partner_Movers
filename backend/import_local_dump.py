@@ -64,6 +64,9 @@ def import_from_json(file_path):
                 'key_disqualifiers': fields.get('key_disqualifiers', ''),
                 'requirements_details': fields.get('requirements_details', ''),
                 'multi_zip_codes': fields.get('multi_zip_codes'),
+                'latitude': fields.get('latitude'),
+                'longitude': fields.get('longitude'),
+                'location_source': fields.get('location_source'),
                 'is_active': fields.get('is_active', True),
             }
         )
