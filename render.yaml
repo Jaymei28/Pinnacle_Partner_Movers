@@ -19,10 +19,11 @@ services:
         value: "*"
 
   # Frontend (Static Site)
-  - type: static
+  - type: web
     name: jobstream-frontend
+    env: static
     buildCommand: "npm install && npm run build"
-    staticPublishPath: dist
+    publishPath: dist
     rootDir: frontend
     envVars:
       - key: VITE_API_URL
