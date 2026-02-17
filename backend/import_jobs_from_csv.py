@@ -14,130 +14,86 @@ from jobs.models import Job, Carrier
 
 def clean_text(text):
     """Clean and normalize text content"""
-    if not text or text == 'N/A' or str(text).lower() == 'nan':
+    if not text or str(text).lower() in ['n/a', 'nan', 'none', '']:
         return None
-    # Remove extra whitespace and newlines
-    text = re.sub(r'\s+', ' ', str(text))
-    return text.strip()
-
-def parse_csv_file(file_path):
-    """Parse the CSV file and extract job listings"""
-    jobs = []
-    
-    with open(file_path, 'r', encoding='utf-8') as f:
-        csv_reader = csv.reader(f)
-        headers = next(csv_reader)
-        
-        for idx, row_values in enumerate(csv_reader):
-            try:
-                # Map row to headers
-                row = {}
-                for i, header in enumerate(headers):
-                    if i < len(row_values):
-                        # Handle duplicate headers by appending index if needed, 
-                        # but we know Col 0 is short Lane Info and Col 8 is detailed Lane Info
-                        key = header if header not in row else f"{header}_{i}"
-                        row[key] = row_values[i]
-                
-                # Extract fields
-                carrier_name = clean_text(row.get('Carriers', 'Unknown Carrier'))
-                title = clean_text(row.get('Lane Information', 'Job Opportunity'))
-                location_details = row_values[8] if len(row_values) > 8 else ""
-                pay = clean_text(row.get('Pay', ''))
-                home_time = clean_text(row.get('Exact Home Time', ''))
-                experience = clean_text(row.get('Experience', ''))
-                freight_types = clean_text(row.get('Freight Types', ''))
-                benefits = clean_text(row.get('Benefits', ''))
-                orientation = clean_text(row.get('Orientation', ''))
-                load_unload = clean_text(row.get('Load/Unload', ''))
-                multi_zip = clean_text(row.get('Location Zip Codes', ''))
-                state = clean_text(row.get('State', ''))
-                
-                # Construct combined fields for the new model sections
-                
-                # 1. Job Details
-                job_details_parts = []
-                if location_details: job_details_parts.append(location_details)
-                if home_time: job_details_parts.append(f"Home Time: {home_time}")
-                if freight_types: job_details_parts.append(f"Freight Types: {freight_types}")
-                if experience: job_details_parts.append(f"Experience Required: {experience}")
-                job_details = "\n\n".join(job_details_parts)
-                
-                # 2. Pay Details
-                pay_details_parts = []
-                if pay: pay_details_parts.append(pay)
-                if benefits: pay_details_parts.append(f"Benefits: {benefits}")
-                pay_details = "\n\n".join(pay_details_parts)
-                
-                # 3. Equipment
-                equipment_parts = []
-                if load_unload: equipment_parts.append(f"Load/Unload: {load_unload}")
-                if orientation: equipment_parts.append(f"Orientation: {orientation}")
-                equipment_details = "\n\n".join(equipment_parts)
-                
-                # 4. Additional Info
-                additional_info = f"Source: CSV Import - Row {idx+1}"
-
-                job_data = {
-                    'carrier_name': carrier_name,
-                    'title': title[:200],
-                    'state': state[:200] if state else None,
-                    'job_details': job_details,
-                    'pay_details': pay_details,
-                    'equipment_details': equipment_details,
-                    'additional_info': additional_info,
-                    'multi_zip_codes': multi_zip,
-                    'apply_link': 'https://classarecruiting.com',
-                }
-                
-                jobs.append(job_data)
-                
-            except Exception as e:
-                print(f"Error parsing row {idx + 1}: {e}")
-                continue
-    
-    return jobs
+    return str(text).strip()
 
 def import_jobs(csv_file_path):
-    """Import jobs from CSV file into database"""
+    """Import jobs from CSV file into database using exact headers found in Jobs.csv"""
     print(f"Parsing CSV file: {csv_file_path}")
-    jobs_to_import = parse_csv_file(csv_file_path)
-    
-    print(f"\nParsed {len(jobs_to_import)} job listings from CSV")
     
     created_count = 0
     updated_count = 0
     
-    for data in jobs_to_import:
-        try:
-            # 1. Get or create Carrier
-            carrier, _ = Carrier.objects.get_or_create(name=data.pop('carrier_name'))
-            
-            # 2. Try to find existing job by carrier, title, and state to deduplicate
-            existing_job = Job.objects.filter(
-                carrier=carrier,
-                title=data['title'],
-                state=data['state']
-            ).first()
-            
-            if existing_job:
-                for key, value in data.items():
-                    setattr(existing_job, key, value)
-                existing_job.save()
-                updated_count += 1
-            else:
-                Job.objects.create(carrier=carrier, **data)
-                created_count += 1
+    with open(csv_file_path, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader):
+            try:
+                # 1. Get exact carrier name
+                c_name = clean_text(row.get('carrier_name')) or 'Unknown Carrier'
+                carrier, _ = Carrier.objects.get_or_create(name=c_name)
                 
-        except Exception as e:
-            print(f"Error importing job: {e}")
-            continue
-    
-    print(f"\nImport Summary: Created {created_count}, Updated {updated_count}")
+                # 2. Extract job title and location
+                title = clean_text(row.get('title')) or 'Job Opportunity'
+                state = clean_text(row.get('state'))
+                zip_code = clean_text(row.get('zip_code'))
+                
+                # 3. Build Consolidated Sections
+                
+                # Job Details Section
+                job_details_parts = []
+                if clean_text(row.get('home_time')): job_details_parts.append(f"Home Time: {row['home_time']}")
+                if clean_text(row.get('exact_home_time')): job_details_parts.append(f"Precise Schedule: {row['exact_home_time']}")
+                if clean_text(row.get('account_type')): job_details_parts.append(f"Account: {row['account_type']}")
+                if clean_text(row.get('freight_types')): job_details_parts.append(f"Freight: {row['freight_types']}")
+                if clean_text(row.get('experience_levels')): job_details_parts.append(f"Experience: {row['experience_levels']}")
+                job_details = "\n\n".join(job_details_parts)
+                
+                # Pay Details Section
+                pay_parts = []
+                if clean_text(row.get('pay_range')): pay_parts.append(f"Range: {row['pay_range']}")
+                if clean_text(row.get('average_weekly_pay')): pay_parts.append(f"Average Weekly: {row['average_weekly_pay']}")
+                if clean_text(row.get('salary')): pay_parts.append(f"Salary: {row['salary']}")
+                if clean_text(row.get('bonus_offer')): pay_parts.append(f"Bonus: {row['bonus_offer']}")
+                pay_details = "\n\n".join(pay_parts)
+                
+                # Equipment Section
+                equip_parts = []
+                if clean_text(row.get('transmissions')): equip_parts.append(f"Transmission: {row['transmissions']}")
+                if clean_text(row.get('cameras')): equip_parts.append(f"Cameras: {row['cameras']}")
+                if clean_text(row.get('orientation_details')): equip_parts.append(f"Orientation: {row['orientation_details']}")
+                equipment_details = "\n\n".join(equip_parts)
+
+                # 4. Save to Database
+                defaults = {
+                    'state': state,
+                    'zip_code': zip_code,
+                    'hiring_radius_miles': int(row.get('hiring_radius_miles', 50) or 50),
+                    'job_details': job_details,
+                    'pay_details': pay_details,
+                    'equipment_details': equipment_details,
+                    'apply_link': 'https://classarecruiting.com',
+                    'is_active': True
+                }
+                
+                job, created = Job.objects.update_or_create(
+                    carrier=carrier,
+                    title=title,
+                    defaults=defaults
+                )
+                
+                if created: created_count += 1
+                else: updated_count += 1
+                
+            except Exception as e:
+                print(f"Error on row {idx+1}: {e}")
+                continue
+                
+    print(f"\nImport Finished: {created_count} created, {updated_count} updated.")
 
 if __name__ == '__main__':
     csv_file = os.path.join(os.path.dirname(__file__), '..', 'Jobs.csv')
-    if not os.path.exists(csv_file):
-        print(f"Error: CSV file not found at {csv_file}")
-        sys.exit(1)
-    import_jobs(csv_file)
+    if os.path.exists(csv_file):
+        import_jobs(csv_file)
+    else:
+        print("CSV not found.")
