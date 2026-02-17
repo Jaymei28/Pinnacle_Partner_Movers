@@ -35,4 +35,4 @@ services:
 databases:
   - name: jobstream-db
     databaseName: jobstream_db
-    user: postgres
+    user: db_admin
