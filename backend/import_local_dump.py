@@ -64,7 +64,6 @@ def import_from_json(file_path):
                 'key_disqualifiers': fields.get('key_disqualifiers', ''),
                 'requirements_details': fields.get('requirements_details', ''),
                 'multi_zip_codes': fields.get('multi_zip_codes'),
-                'apply_link': fields.get('apply_link', 'https://classarecruiting.com'),
                 'is_active': fields.get('is_active', True),
             }
         )

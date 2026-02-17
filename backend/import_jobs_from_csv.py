@@ -72,7 +72,6 @@ def import_jobs(csv_file_path):
                     'job_details': job_details,
                     'pay_details': pay_details,
                     'equipment_details': equipment_details,
-                    'apply_link': 'https://classarecruiting.com',
                     'is_active': True
                 }
                 
