@@ -235,14 +235,6 @@ class Job(models.Model):
                     state=state
                 )
                 existing_zips.add(zip_code)
-
-                JobLocation.objects.create(
-                    job=self,
-                    zip_code=zip_code,
-                    city=city,
-                    state=state
-                )
-                existing_zips.add(zip_code)
     
     def __str__(self):
         return f"{self.title} at {self.carrier.name}"
