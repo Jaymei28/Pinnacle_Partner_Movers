@@ -1,6 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Carrier, Job
+from .models import Carrier, Job, JobLocation
+
+
+class JobLocationInline(admin.TabularInline):
+    model = JobLocation
+    extra = 1
+    fields = ('city', 'state', 'zip_code', 'latitude', 'longitude')
+    readonly_fields = ('latitude', 'longitude')
 
 
 @admin.register(Carrier)
@@ -74,6 +81,7 @@ class JobAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at')
     list_per_page = 100
     preserve_filters = False
+    inlines = [JobLocationInline]
     
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -101,7 +109,11 @@ class JobAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('SECTION 1: Basic Information', {
-            'fields': ('carrier', 'title', 'state', 'zip_code', 'hiring_radius_miles', 'is_active')
+            'fields': (
+                'carrier', 'title', 'state', 'zip_code', 'hiring_radius_miles', 
+                'multi_zip_codes', 'is_active'
+            ),
+            'description': 'Enter primary location above. Use Multi Zip Codes field below to bulk-add locations.'
         }),
         ('SECTION 2: Job Details', {
             'fields': ('job_details',),

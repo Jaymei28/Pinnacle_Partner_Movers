@@ -1,4 +1,9 @@
 from django.db import models
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 
 
 class Carrier(models.Model):
@@ -70,8 +75,8 @@ class Job(models.Model):
     
     # ========== SECTION 1: BASIC INFORMATION ==========
     title = models.CharField(max_length=200, help_text="Job title/position")
-    state = models.CharField(max_length=200, help_text="Primary state for the job")
-    zip_code = models.CharField(max_length=10, help_text="Location zip code")
+    state = models.CharField(max_length=200, blank=True, null=True, help_text="Primary state for the job")
+    zip_code = models.CharField(max_length=10, blank=True, null=True, help_text="Location zip code")
     hiring_radius_miles = models.IntegerField(default=50, help_text="Hiring radius in miles")
     
     # ========== SECTION 2: CONSOLIDATED FIELDS (1 Field Per Section) ==========
@@ -104,6 +109,12 @@ class Job(models.Model):
         help_text="Key disqualifiers for this job."
     )
     
+    multi_zip_codes = models.TextField(
+        blank=True, 
+        null=True, 
+        help_text="Paste multiple locations here. Format: '25401 (Martinsburg), 07001 (Avenel)'. States will be auto-detected."
+    )
+    
     # 5. Requirements (Includes experience, drug test, sap, states, etc.)
     requirements_details = models.TextField(
         blank=True, 
@@ -134,7 +145,23 @@ class Job(models.Model):
     source_modified_date = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Auto-populate zip code if missing
+        # 1. If primary zip is missing but multi-zip is present, take the first one
+        if not self.zip_code and self.multi_zip_codes:
+            import re
+            match = re.search(r'(\d{5})', self.multi_zip_codes)
+            if match:
+                self.zip_code = match.group(1)
+                self.zip_source = 'from_multi'
+                
+                # Also try to get state if missing
+                if not self.state:
+                    from .utils import get_geocoder
+                    nomi = get_geocoder()
+                    loc = nomi.query_postal_code(self.zip_code)
+                    if loc is not None and not loc.empty:
+                        self.state = loc.get('state_code') or "Unknown"
+
+        # 2. Auto-populate zip code if still missing
         if not self.zip_code or not self.zip_source:
             from .zip_utils import auto_populate_zip_code
             zip_code, source, radius = auto_populate_zip_code(self)
@@ -156,6 +183,66 @@ class Job(models.Model):
             self.location_source = source
         
         super().save(*args, **kwargs)
+
+        # Process multi_zip_codes if present
+        if self.multi_zip_codes:
+            self.process_multi_zip_codes()
+
+    def process_multi_zip_codes(self):
+        """
+        Parses multi_zip_codes field and creates JobLocation records.
+        Format: "25401 (Martinsburg), 07001 (Avenel)"
+        """
+        import re
+        from .utils import get_geocoder
+        
+        # Split by comma
+        entries = [e.strip() for e in self.multi_zip_codes.split(',') if e.strip()]
+        
+        # Keep track of existing zips to avoid duplicates
+        existing_zips = set(self.additional_locations.values_list('zip_code', flat=True))
+        if self.zip_code:
+            existing_zips.add(self.zip_code)
+
+        nomi = get_geocoder()
+        
+        for entry in entries:
+            # Match ZIP (City) or just ZIP
+            match = re.search(r'(\d{5})(?:\s*\(([^)]+)\))?', entry)
+            if match:
+                zip_code = match.group(1)
+                city_input = match.group(2)
+                
+                if zip_code in existing_zips:
+                    continue
+                
+                # Get state and city fallback from pgeocode
+                location = nomi.query_postal_code(zip_code)
+                state = "Unknown"
+                city = city_input or "Unknown"
+                
+                if location is not None and not location.empty:
+                    state = location.get('state_code') or "Unknown"
+                    if not city_input:
+                        city = location.get('place_name') or "Unknown"
+                
+                # Create the location
+                from .models import JobLocation
+                JobLocation.objects.create(
+                    job=self,
+                    zip_code=zip_code,
+                    city=city,
+                    state=state
+                )
+                existing_zips.add(zip_code)
+
+                JobLocation.objects.create(
+                    job=self,
+                    zip_code=zip_code,
+                    city=city,
+                    state=state
+                )
+                existing_zips.add(zip_code)
     
     def __str__(self):
         return f"{self.title} at {self.carrier.name}"
@@ -164,4 +251,48 @@ class Job(models.Model):
         ordering = ['-created_at']
         verbose_name = "Job"
         verbose_name_plural = "Jobs"
+
+
+class JobLocation(models.Model):
+    """
+    Represents an additional location for a job posting.
+    Supports jobs that hire in multiple cities or zip codes.
+    """
+    job = models.ForeignKey(
+        Job, 
+        on_delete=models.CASCADE, 
+        related_name='additional_locations',
+        help_text="The job this location belongs to"
+    )
+    city = models.CharField(max_length=100, blank=True, null=True, help_text="City name")
+    state = models.CharField(max_length=100, help_text="State (e.g., TX or Texas)")
+    zip_code = models.CharField(max_length=10, help_text="Zip code for this location")
+    
+    # Geocoding data for this specific location
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        # Auto-populate geocoding fields for this location if missing
+        if not self.latitude or not self.longitude:
+            try:
+                from .utils import get_coordinates_from_zip
+                lat, lon = get_coordinates_from_zip(self.zip_code)
+                if lat and lon:
+                    self.latitude = lat
+                    self.longitude = lon
+            except Exception as e:
+                logger.error(f"Error geocoding JobLocation {self.zip_code}: {e}")
+        
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.city or ''} {self.state} {self.zip_code}".strip()
+
+    class Meta:
+        verbose_name = "Additional Location"
+        verbose_name_plural = "Additional Locations"
 

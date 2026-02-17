@@ -6,7 +6,8 @@ import presentationIcon from '../images/pesentation.svg';
 import preQualIcon from '../images/pre-qualification.svg';
 import appProcessIcon from '../images/application-process.svg';
 
-const API_URL = 'http://localhost:8000/api/jobs/';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+const API_URL = `${API_BASE_URL}jobs/`;
 
 const Opportunities = () => {
     const [jobs, setJobs] = useState([]);
@@ -671,7 +672,7 @@ const Opportunities = () => {
                                             <div className="job-title-link" onClick={() => handleViewDetails(job)}>{job.title}</div>
                                             <div className="job-pay-sub">
                                                 <svg viewBox="0 0 24 24" className="pay-arrow-icon"><path d="M11 17l-5-5 5-5M18 12H6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                                Avg. Weekly Pay: {job.average_weekly_pay || '$1,300 - 2,100'}
+                                                Avg. Weekly Pay: {job.average_weekly_pay}
                                             </div>
                                         </td>
                                         <td className="td-status">
@@ -683,10 +684,10 @@ const Opportunities = () => {
                                                 {job.hiring_status === 'full' ? 'Marked as full' : 'Open to hiring'}
                                             </span>
                                         </td>
-                                        <td className="td-exp">{job.experience_required || '12 months'}</td>
-                                        <td className="td-driver">{job.driver_type || 'Lease Purchase'}</td>
-                                        <td className="td-freight">{job.freight_type || 'Dry Van'}</td>
-                                        <td className="td-hometime">{job.home_time || 'Bi-Weekly'}</td>
+                                        <td className="td-exp">{job.experience_required}</td>
+                                        <td className="td-driver">{job.driver_type}</td>
+                                        <td className="td-freight">{job.freight_type}</td>
+                                        <td className="td-hometime">{job.home_time}</td>
                                         <td className="td-actions">
                                             <button className="btn-view-eye" onClick={() => handleViewDetails(job)}>
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
@@ -736,6 +737,39 @@ const Opportunities = () => {
                                 <div className="tab-pane-container">
                                     {activeTab === 'description' && (
                                         <div className="job-summary-container">
+                                            {/* Hiring Locations Section */}
+                                            <div className="lane-section-title" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>
+                                                Hiring Locations
+                                            </div>
+                                            <div className="premium-table-wrapper" style={{ marginBottom: '1.5rem' }}>
+                                                <table className="premium-data-table">
+                                                    <thead>
+                                                        <tr className="table-header-row">
+                                                            <th className="table-header-cell">State</th>
+                                                            <th className="table-header-cell">Zip Code</th>
+                                                            <th className="table-header-cell">Note</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr className="table-data-row">
+                                                            <td className="table-value-cell">{selectedJob.state}</td>
+                                                            <td className="table-value-cell">{selectedJob.zip_code}</td>
+                                                            <td className="table-value-cell">Primary</td>
+                                                        </tr>
+                                                        {selectedJob.additional_locations?.map((loc, idx) => (
+                                                            <tr key={idx} className="table-data-row">
+                                                                <td className="table-value-cell">{loc.state}</td>
+                                                                <td className="table-value-cell">{loc.zip_code}</td>
+                                                                <td className="table-value-cell">{loc.city || 'Additional'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+
+                                            <div className="lane-section-title" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>
+                                                Job Details
+                                            </div>
                                             {renderKeyDataTable(selectedJob.job_details)}
                                         </div>
                                     )}

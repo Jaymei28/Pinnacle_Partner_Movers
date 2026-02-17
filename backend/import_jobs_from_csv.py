@@ -129,28 +129,8 @@ def parse_csv_file(file_path):
                     'description': description,
                     'job_type': 'full-time',
                     
-                    # Compensation
-                    'salary': pay[:100] if pay else None,
-                    'pay_type': 'Weekly' if pay and 'weekly' in pay.lower() else 'CPM' if pay and 'cpm' in pay.lower() else None,
-                    
-                    # Schedule & Home Time
-                    'home_time': home_time[:100] if home_time else None,
-                    'schedule_type': home_time[:100] if home_time else None,
-                    
-                    # Experience & Requirements
-                    'experience_required': experience[:100] if experience else None,
-                    'requirements': f"Experience: {experience}" if experience else None,
-                    
-                    # Driver-Specific Fields
-                    'driver_type': driver_type[:100] if driver_type else None,
-                    'freight_type': load_unload[:100] if load_unload else None,
-                    'equipment_type': equipment_type,
-                    
-                    # Coverage Area
-                    'states_covered': state if state else None,
-                    
                     # Benefits
-                    'benefits': benefits if benefits else None,
+                    'benefit_other_info': benefits if benefits else None,
                     
                     # Application
                     'apply_link': 'https://classarecruiting.com',

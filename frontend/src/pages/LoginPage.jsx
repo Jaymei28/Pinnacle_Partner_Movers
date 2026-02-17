@@ -16,7 +16,8 @@ const LoginPage = ({ setIsLoggedIn }) => {
         setLoginError('');
         setLoading(true);
         try {
-            const response = await axios.post('http://localhost:8000/api/login/', loginData);
+            const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+            const response = await axios.post(`${API_BASE_URL}login/`, loginData);
             localStorage.setItem('token', response.data.token);
             setIsLoggedIn(true);
             navigate('/dashboard');

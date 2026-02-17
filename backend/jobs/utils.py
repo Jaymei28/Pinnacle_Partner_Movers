@@ -104,79 +104,116 @@ def filter_jobs_by_radius(driver_zip, jobs_queryset, max_radius=250):
     all_scored_jobs = []
     
     for job in jobs_queryset:
-        # Use pre-populated geocoding fields if available
-        job_lat = job.latitude
-        job_lon = job.longitude
-        location_source = job.location_source
+        # Collect all possible locations for this job
+        locations = []
         
-        # If job doesn't have geocoded coordinates, try to populate them
-        if (job_lat is None or job_lon is None) and location_source != 'state_only':
-            from .geocoding import get_job_location
-            job_lat, job_lon, location_source = get_job_location(job)
-            
-            # Update the job model with coordinates for future use
-            if job_lat and job_lon:
-                job.latitude = job_lat
-                job.longitude = job_lon
-                job.location_source = location_source
-                job.save(update_fields=['latitude', 'longitude', 'location_source'])
-
-        distance = None
-        if driver_lat is not None and job_lat is not None:
-            distance = calculate_distance(driver_lat, driver_lon, job_lat, job_lon)
-
-        match_type = None
-        priority = 99
-
-        # Tier 1: In Radius
-        if distance is not None:
-            job_radius = job.hiring_radius_miles if job.hiring_radius_miles else max_radius
-            if distance <= job_radius:
-                match_type = 'distance'
-                priority = 1
-            else:
-                # Tier 2: Proximity (Nearest fallback)
-                match_type = 'proximity'
-                priority = 2
+        # 1. Main location from Job model
+        locations.append({
+            'lat': job.latitude,
+            'lon': job.longitude,
+            'zip': job.zip_code,
+            'state': job.state,
+            'source': job.location_source,
+            'hiring_radius': job.hiring_radius_miles
+        })
         
-        # Tier 3: State Level (if no distance match or as secondary)
-        if not match_type or match_type == 'proximity':
-            job_state = job.state.upper() if job.state else None
-            # Extract state code if it's "City, ST"
-            if job_state and ',' in job_state:
-                job_state = job_state.split(',')[-1].strip()
-            
-            if driver_state and job_state == driver_state:
-                if not match_type:
-                    match_type = 'state_level'
-                    priority = 3
-                # If already proximity, prioritize it slightly more if it's in-state
-                if match_type == 'proximity':
-                    priority = 1.5 
+        # 2. Additional locations from JobLocation model
+        for loc in job.additional_locations.all():
+            locations.append({
+                'lat': loc.latitude,
+                'lon': loc.longitude,
+                'zip': loc.zip_code,
+                'state': loc.state,
+                'source': 'additional_location',
+                'hiring_radius': job.hiring_radius_miles # Use job's global hiring radius
+            })
 
-        if match_type:
-            # Filter out extreme distances (e.g., Arizona jobs when searching Florida)
-            # We'll set a 500-mile cutoff for 'proximity' matches unless it's a state-level match
-            MAX_PROXIMITY_MILES = 500
-            
-            is_far = distance is not None and distance > MAX_PROXIMITY_MILES
-            is_state_match = (match_type == 'state_level' or priority == 1.5)
-            
-            if is_far and not is_state_match:
-                continue
+        best_job_score = None
 
+        for loc_data in locations:
+            job_lat = loc_data['lat']
+            job_lon = loc_data['lon']
+            location_source = loc_data['source']
+            job_state_raw = loc_data['state']
+            job_zip = loc_data['zip']
+            
+            # If coordinates are missing, try to geocode if it's the main location or additional location
+            if (job_lat is None or job_lon is None) and location_source != 'state_only':
+                # For main location, we can try to geocode and save it
+                if location_source != 'additional_location':
+                    from .geocoding import get_job_location
+                    job_lat, job_lon, location_source = get_job_location(job)
+                    if job_lat and job_lon:
+                        job.latitude = job_lat
+                        job.longitude = job_lon
+                        job.location_source = location_source
+                        job.save(update_fields=['latitude', 'longitude', 'location_source'])
+                # For additional locations, they should be geocoded on save, but we can try fallback
+                elif job_zip:
+                    job_lat, job_lon = get_coordinates_from_zip(job_zip)
+
+            distance = None
+            if driver_lat is not None and job_lat is not None:
+                distance = calculate_distance(driver_lat, driver_lon, job_lat, job_lon)
+
+            match_type = None
+            priority = 99
+
+            # Tier 1: In Radius
+            if distance is not None:
+                job_radius = loc_data['hiring_radius'] if loc_data['hiring_radius'] else max_radius
+                if distance <= job_radius:
+                    match_type = 'distance'
+                    priority = 1
+                else:
+                    # Tier 2: Proximity (Nearest fallback)
+                    match_type = 'proximity'
+                    priority = 2
+            
+            # Tier 3: State Level
+            if not match_type or match_type == 'proximity':
+                job_state = job_state_raw.upper() if job_state_raw else None
+                if job_state and ',' in job_state:
+                    job_state = job_state.split(',')[-1].strip()
+                
+                if driver_state and job_state == driver_state:
+                    if not match_type:
+                        match_type = 'state_level'
+                        priority = 3
+                    if match_type == 'proximity':
+                        priority = 1.5 
+
+            if match_type:
+                MAX_PROXIMITY_MILES = 500
+                is_far = distance is not None and distance > MAX_PROXIMITY_MILES
+                is_state_match = (match_type == 'state_level' or priority == 1.5)
+                
+                if is_far and not is_state_match:
+                    continue
+
+                # Store the score for this location
+                score = {
+                    'distance_miles': distance,
+                    'location_source': location_source,
+                    'match_type': match_type,
+                    'priority': priority,
+                    'zip_code': job_zip
+                }
+                
+                # Check if this location is better than previously found locations for THIS job
+                if best_job_score is None or \
+                   score['priority'] < best_job_score['priority'] or \
+                   (score['priority'] == best_job_score['priority'] and 
+                    (score['distance_miles'] or 9999) < (best_job_score['distance_miles'] or 9999)):
+                    best_job_score = score
+
+        # If any location for this job matched, add it to the final result
+        if best_job_score:
             all_scored_jobs.append({
                 'job': job,
-                'distance_miles': distance,
-                'location_source': location_source,
-                'match_type': match_type,
-                'priority': priority
+                **best_job_score
             })
     
-    # Sorting: 
-    # 1. Priority (Distance < Proximity-In-State < Proximity-Out-State < State Match)
-    # 2. Distance (closest first)
+    # Sorting across ALL jobs
     all_scored_jobs.sort(key=lambda x: (x['priority'], x['distance_miles'] if x['distance_miles'] is not None else 9999))
-    
-    # Return top results (e.g., top 50 to keep it relevant)
     return all_scored_jobs[:50]

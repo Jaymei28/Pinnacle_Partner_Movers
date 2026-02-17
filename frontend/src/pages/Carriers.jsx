@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:8000/api/carriers/';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+const API_URL = `${API_BASE_URL}carriers/`;
 
 const Carriers = () => {
     const [carriers, setCarriers] = useState([]);
