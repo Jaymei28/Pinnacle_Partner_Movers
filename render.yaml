@@ -19,9 +19,8 @@ services:
         value: "*"
 
   # Frontend (Static Site)
-  - type: web
+  - type: static
     name: jobstream-frontend
-    env: static
     buildCommand: "npm install && npm run build"
     publishPath: dist
     rootDir: frontend
