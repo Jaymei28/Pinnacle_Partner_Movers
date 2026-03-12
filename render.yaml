@@ -3,6 +3,7 @@ services:
   - type: web
     name: jobstream-backend
     env: python
+    plan: free
     buildCommand: "sh build.sh"
     startCommand: "gunicorn jobstream_backend.wsgi:application"
     rootDir: backend
@@ -41,4 +42,5 @@ services:
 databases:
   - name: jobstream-db
     databaseName: jobstream_db
+    plan: free
     user: db_admin
