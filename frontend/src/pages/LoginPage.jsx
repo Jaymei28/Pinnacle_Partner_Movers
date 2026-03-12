@@ -23,7 +23,10 @@ const LoginPage = ({ setIsLoggedIn }) => {
         setLoading(true);
         startLoading();
         try {
-            const VITE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            let VITE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            if (VITE_URL && !VITE_URL.startsWith('http')) {
+                VITE_URL = `https://${VITE_URL}`;
+            }
             const API_BASE_URL = VITE_URL.endsWith('/api/') ? VITE_URL : `${VITE_URL.replace(/\/$/, '')}/api/`;
             const response = await axios.post(`${API_BASE_URL}login/`, loginData);
             localStorage.setItem('token', response.data.token);
