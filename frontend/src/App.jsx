@@ -28,7 +28,7 @@ const App = () => {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={
-              isLoggedIn ? <Navigate to="/dashboard" /> : <LandingPage />
+              isLoggedIn ? <Navigate to="/dashboard" /> : <LoginPage setIsLoggedIn={setIsLoggedIn} />
             } />
 
             <Route path="/login" element={
