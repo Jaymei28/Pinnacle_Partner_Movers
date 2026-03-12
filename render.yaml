@@ -37,7 +37,7 @@ services:
         fromService:
           name: jobstream-backend
           type: web
-          property: url
+          property: host
 
 databases:
   - name: jobstream-db
