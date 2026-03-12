@@ -42,5 +42,5 @@ services:
 databases:
   - name: jobstream-db
     databaseName: jobstream_db
-    plan: basic
+    plan: basic-1gb
     user: db_admin
