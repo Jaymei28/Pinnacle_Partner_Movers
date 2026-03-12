@@ -2,6 +2,11 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 let VITE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+if (VITE_URL && !VITE_URL.includes('.') && !VITE_URL.includes('localhost')) {
+    VITE_URL = `${VITE_URL}.onrender.com`;
+}
+
 if (VITE_URL && !VITE_URL.startsWith('http')) {
     VITE_URL = `https://${VITE_URL}`;
 }
