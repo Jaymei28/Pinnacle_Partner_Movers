@@ -14,14 +14,19 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
-        value: false
+        value: "false"
       - key: ALLOWED_HOSTS
         value: "*"
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_PASSWORD
+        value: admin1234
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: admin@example.com
 
   # Frontend (Static Site)
-  - type: web
+  - type: static
     name: jobstream-frontend
-    env: static
     buildCommand: "npm install && npm run build"
     staticPublishPath: dist
     rootDir: frontend
@@ -30,7 +35,7 @@ services:
         fromService:
           name: jobstream-backend
           type: web
-          property: host
+          property: url
 
 databases:
   - name: jobstream-db

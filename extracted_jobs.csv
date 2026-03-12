@@ -1,0 +1,117 @@
+Carrier,Title,State,Zip,Pay,Home_Time
+Swift,"Walmart - Arcadia, FL (Dedicated)",FL,34266,"$1,400",Home Weekly
+Swift,"Walmart - Opelika, AL (Dedicated)",AL,36801,"$1,350",Home Weekly
+Swift,"Walmart - Pageland, SC (Dedicated)",SC,29728,"$1,400",Home Weekly
+Swift,"Walmart - Cullman, AL (Dedicated)",AL,35055,"$1,350",Home Weekly
+Swift,"Walmart - Douglas, GA (Dedicated)",GA,31533,"$1,350",Home Weekly
+Swift,"Walmart - Brundidge, AL (Dedicated)",AL,36010,"$1,400",Home Weekly
+Swift,"Walmart - Laurens, SC (Dedicated)",SC,29360,"$1,350",Home Weekly
+Swift,"Walmart - Harrisonville, MO (Dedicated)",MO,64701,"$1,150",Home Weekly
+Swift,"Walmart - Moberly, MO (Dedicated)",MO,65270,"$1,400",Home Weekly
+Swift,"Target - Tifton, GA (Dedicated)",GA,31793,"$1,200",Home Weekly
+Swift,"Target - Midway, GA (Dedicated)",GA,31320,"$1,250",Home Weekly
+Swift,"Target - Ocala, FL Teams",FL,34474,"$1,500",Home Weekly
+Swift,"Target - Lake City, FL Teams",FL,32024,"$1,550",Home Weekly
+Swift,"Lowes - Statesville, NC (Dedicated)",NC,28677,"$1,250",Home Weekly
+Swift,"Ross - Rock Hill, SC (Dedicated)",SC,29730,"$1,200",Home Weekly
+Swift,"Costco - PNW Sumner, WA (Heavy Haul)",WA,98390,"$1,600",Home Weekly
+Swift,Georgia Pacific - Rincon (Dedicated),GA,31326,"$1,450",Home Weekly
+Swift,"Dollar Tree - Ridgefield, WA (Dedicated)",WA,98642,"$1,450",Home Weekly
+Swift,"Auto Haul - Ocala, FL",FL,34474,"$1,600",14 Days Out
+Swift,"Intermodal - Chicago, IL",IL,60601,"$1,450",Home Daily
+Swift,"Intermodal - Lathrop, CA",CA,95330,"$1,500",Home Daily
+Swift,"Intermodal - Hutchins, TX",TX,75134,"$1,050",Home Daily
+Swift,Intermodal - PA Regional,PA,17104,"$1,800",Home Weekly
+Swift,Western Regional - Las Vegas,NV,89101,"$1,300",Home Weekly
+Swift,"Watts - Sparks, NV Solo",NV,89431,"$1,325",Home Weekly
+Swift,Eastern Regional - Statesboro,GA,30458,"$1,250",Every 2 Weeks
+Swift,Eastern Regional - Ocala,FL,34474,"$1,200",Every 2 Weeks
+Swift,"Great Lakes Regional - Detroit, MI",MI,48164,"$1,300",Every 2 Weeks
+Swift,Great Lakes Regional - Gary,IN,46406,"$1,300",Home Weekly
+Swift,"Flatbed - Eastern Regional - Greer, SC",SC,29651,"$1,300",2-3 Weeks Out
+Swift,OTR Flatbed,AZ,85043,"$1,400",2 Weeks Out
+Swift,SLC Linehaul,UT,84120,"$1,200",Every 2 Weeks
+Swift,"Quad Graphics - Sussex, WI",WI,53172,"$1,400",Every 2 Weeks
+JB Hunt,"C&S - Brattleboro, VT (Dedicated)",VT,05301,"$2,115",Home Daily
+JB Hunt,"C&S - North Hatfield, MA (Dedicated)",MA,01038,"$2,115",Home Daily
+JB Hunt,"Ahold - Schodack Landing, NY (Dedicated)",NY,12156,"$1,857",Home Daily
+JB Hunt,"Siegwerk - Des Moines, IA (Dedicated)",IA,50313,"$1,801",Home Weekly
+JB Hunt,"Dollar Tree - Berwick, PA (Dedicated)",PA,18603,"$1,750",Home Weekly
+JB Hunt,"Walmart - Sterling, IL",IL,61081,"$1,550",Home Weekly
+JB Hunt,"Intermodal - Harrisburg, PA",PA,17101,"$1,400",Home Daily
+JB Hunt,"UNFI - Manchester, PA",PA,17345,"$1,673",Home Weekly
+JB Hunt,"Mountaire Frozen - Millsboro, DE",DE,19966,"$1,692",Home Weekly
+US Xpress,"Walmart - Gas City, IN",IN,46933,"$1,400",Home Weekly
+US Xpress,"Dollar General - Marion, IN",IN,46952,"$1,600",Home Weekly
+US Xpress,"FD Ashley, IN (Dedicated)",IN,46705,"$1,850",Home Weekly
+US Xpress,Family Dollar - Front Royal (Doubles),VA,22630,"$1,725",Home Weekly
+US Xpress,TSC Pendleton OTR Tour Fleet,MO,65802,"$1,500",Home Weekly
+US Xpress,"Southeast Regional - Ellenwood, GA",GA,30294,"$1,050",Home Weekly
+US Xpress,I-35 Fleet - Dallas Based,TX,75201,"$1,150",Bi-Weekly
+US Xpress,OTR Team,TN,37421,"$1,550",10-14 Days Out
+US Xpress,OTR Chicago Based,IL,60601,"$1,350",10-14 Days Out
+US Xpress,Lease OTR,TN,37421,Lease,OTR
+CR England,"Sysco - Front Royal, VA (Dedicated)",VA,22630,"$1,500",Home Weekly
+CR England,Smithfield - NC Regional,NC,27577,"$1,386",Home Weekly
+CR England,OTR Team,UT,84104,"$1,400",14 Days Out
+Epes,"Lowes - Adairsville, GA Local",GA,30103,"$1,119",Home Daily
+Epes,"Greif/Caraustar Mill Group - Austell, GA",GA,30106,"$1,150",Home Daily
+Epes,Greif Newark Local,NJ,07101,$925,Home Daily
+Epes,"IP Lafayette, LA Regional",LA,70501,"$1,200",Weekends
+Epes,Shorthaul Regional - Greensboro HQ,NC,27409,"$1,050",Home Weekly
+Knight,"Port Services - Long Beach, CA",CA,90802,"$1,550",Home Daily
+Hogan,SAL Muncie (Dedicated),IN,47302,"$1,500",Home Daily
+Pam,Arlingtonmaster - Laredo to Arlington,TX,78040,"$1,500",Weekly
+Pam,"SHONERSKOWMI - Milan, MI",MI,48160,"$1,350",Weekly
+TA Dedicated,"Watts - Franklin, NH Solo",NH,03235,"$1,325",Home Weekly
+TA Dedicated,3M Team - IL,IL,60115,"$2,280",Home Weekly
+CR England,Smithfield Regional - NC,NC,27577,"$1,386",Home Weekly
+CR England,Christopher Ranch Teams,CA,95020,"$2,068",Home Weekly
+CR England,Autoliv Teams,UT,84404,"$2,356",Home Weekly
+US Xpress,I-40 Tour Fleet,TX,75201,"$1,100",Bi-Weekly
+US Xpress,Walmart Gordonsville Regional,VA,22942,"$1,400",Home Weekly
+US Xpress,TSC Navarre OTR Tour Fleet - Springfield,MO,65802,"$1,500",Home Weekly
+US Xpress,OTR Dallas Based,TX,75201,"$1,200",14 Days Out
+US Xpress,OTR Memphis Based,TN,38101,"$1,200",14 Days Out
+US Xpress,OTR Chicago Based,IL,60601,"$1,200",14 Days Out
+US Xpress,OTR Springfield Based,MO,65802,"$1,200",14 Days Out
+US Xpress,OTR Tunnel Hill Based,GA,30755,"$1,200",14 Days Out
+US Xpress,OTR Ellenwood Based,GA,30294,"$1,200",14 Days Out
+Hogan,"Dollar Tree - Cleveland/Marengo, OH",OH,43334,"$2,010",Home Weekly
+Hogan,Dollar Tree - Odessa, TX,TX,79766,"$1,773",Home Weekly
+JB Hunt,Telling Industries - Cambridge OH,OH,43725,"$1,682",Home Weekly
+JB Hunt,Nestle Waters - York PA,PA,17406,"$1,730",Home Weekly
+JB Hunt,Home Depot RDC Van Buren, OH,OH,45889,"$1,634",Home Weekly
+JB Hunt,Leslie's Pool Supply - Hebron KY,KY,41048,"$1,922",Home Weekly
+JB Hunt,Soft Lite - Streetsboro OH,OH,44241,"$1,665",Home Weekly
+JB Hunt,Mountaire Frozen - Millsboro DE,DE,19966,"$1,692",Home Weekly
+Epes,ICL/Intermodal Port Local Mileage,NC,28202,"$1,200",Home Daily
+Epes,System Driver (OTR),NC,27409,"$1,712",Home Weekly
+Epes,X Driver,NC,27409,"$1,224",Home Weekly
+Swift,"Intermodal - Hutchins, TX Regional",TX,75134,"$1,300",Home Weekly
+Swift,Tucson Based OTR Drivers,AZ,85701,"$1,100",3 Weeks Out
+Swift,Eastern Regional Fleet - Ocala,FL,34474,"$1,200",2 Weeks Out
+Swift,"Great Lakes Regional - Edwardsville, KS",KS,66111,"$1,200",2 Weeks Out
+Swift,Eastern Regional Fleet - Columbus,OH,43004,"$1,300",2 Weeks Out
+Swift,"Manteno, IL Dedicated",IL,60950,"$1,300",Home Weekly
+Swift,Target - Lake City, FL Teams,FL,32024,"$1,250",3 Weeks Out
+Swift,Eastern Regional Fleet - Greer,SC,29651,"$1,300",2 Weeks Out
+Swift,907 Western Regional Comfort Zone - Las Vegas,NV,89101,"$1,200",3 Weeks Out
+Swift,Eastern Regional Fleet - Mobile,AL,36601,"$1,300",2 Weeks Out
+Swift,907 Western Regional Comfort Zone - Phoenix,AZ,85001,"$1,150",3 Weeks Out
+Swift,Regional Forge - Willows, CA,CA,95988,"$1,100",2 Weeks Out
+Sharkey,OTR,IL,62301,"$1,750",15 Days Out
+USA Truck,Team,AR,72901,"$2,800",3 Weeks Out
+Barr-Nunn,Teams - Mileage Fleet Only,NC,28202,"$4,268",18 Days Out
+Pam,"FORD052468 (Owner Operator)",TX,78040,"$1,500",Home Weekly
+Schneider,Regional - Indianapolis,IN,46201,"$1,150",Home Weekly
+Schneider,Dedicated - Dallas,TX,75201,"$1,250",Home Weekly
+Bulk Transport,Regional - Atlanta,GA,30301,"$1,400",Home Weekly
+Bulk Transport,Dedicated - Birmingham,AL,35201,"$1,350",Home Weekly
+National Carriers,Dedicated - Liberal,KS,67901,"$1,300",Home Weekly
+National Carriers,OTR,TX,75201,"$1,250",14 Days Out
+Nussbaum,OTR,IL,61748,"$1,500",Home Weekly
+Pitt Ohio,Regional,PA,15201,"$1,600",Home Daily
+Gateway Distribution,Regional,OH,45201,"$1,450",Home Weekly
+Maxim,OTR,PA,19101,"$1,550",14 Days Out
+Mast Trucking,OTR,OH,44663,"$1,350",Home Weekends

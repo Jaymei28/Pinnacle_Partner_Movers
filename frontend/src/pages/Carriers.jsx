@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+const VITE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = VITE_URL.endsWith('/api/') ? VITE_URL : `${VITE_URL.replace(/\/$/, '')}/api/`;
 const API_URL = `${API_BASE_URL}carriers/`;
 
 const Carriers = () => {

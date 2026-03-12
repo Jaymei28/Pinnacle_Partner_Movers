@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Carrier, Job, JobLocation
+from .models import Carrier, Job, JobLocation, Academy
 
 
 class JobLocationInline(admin.TabularInline):
@@ -65,6 +65,47 @@ class CarrierAdmin(admin.ModelAdmin):
         ('Process & Qualifications', {
             'fields': ('presentation', 'pre_qualifications', 'app_process'),
             'description': 'Paste table data into Presentation and Pre-Qualifications'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(Academy)
+class AcademyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'carrier', 'city', 'state', 'zip_code', 'training_type', 'tuition_cost', 'is_active')
+    list_filter = ('carrier', 'state', 'training_type', 'is_active')
+    search_fields = ('name', 'city', 'state', 'zip_code', 'carrier__name', 'academy_details')
+    readonly_fields = ('created_at', 'updated_at', 'latitude', 'longitude')
+    list_per_page = 50
+    preserve_filters = False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related('carrier')
+
+    fieldsets = (
+        ('SECTION 1: Identification & Location', {
+            'fields': ('carrier', 'name', 'city', 'state', 'zip_code', 'is_active'),
+            'description': 'Basic academy identification and physical location.'
+        }),
+        ('SECTION 2: Training Details', {
+            'fields': ('training_type', 'program_length_days', 'tuition_cost', 'tuition_notes'),
+            'description': 'Type of training offered, duration, and tuition information.'
+        }),
+        ('SECTION 3: Pay During Training', {
+            'fields': ('trainee_pay', 'orientation_pay'),
+            'description': 'What the student/trainee is paid during the program.'
+        }),
+        ('SECTION 4: Requirements & Details', {
+            'fields': ('requirements', 'academy_details', 'after_graduation'),
+            'description': 'Enrollment requirements, program details, and post-graduation placement info.'
+        }),
+        ('Location (Geocoding)', {
+            'fields': ('latitude', 'longitude'),
+            'classes': ('collapse',)
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),

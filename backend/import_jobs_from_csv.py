@@ -12,87 +12,111 @@ django.setup()
 
 from jobs.models import Job, Carrier
 
+
 def clean_text(text):
     """Clean and normalize text content"""
-    if not text or str(text).lower() in ['n/a', 'nan', 'none', '']:
+    if not text or str(text).strip().lower() in ['n/a', 'nan', 'none', '']:
         return None
     return str(text).strip()
 
+
+def parse_radius(value):
+    """Parse hiring radius, defaulting to 50 if invalid."""
+    try:
+        return int(str(value).strip())
+    except (ValueError, TypeError):
+        return 50
+
+
 def import_jobs(csv_file_path):
-    """Import jobs from CSV file into database using exact headers found in Jobs.csv"""
-    print(f"Parsing CSV file: {csv_file_path}")
+    """Import jobs from Jobs.csv into the database.
     
+    CSV Headers:
+        Carrier, Title, State, Zip code, Hiring radius miles,
+        Multi zip codes, Job Details, Pay Details, Equipment Details,
+        Key Disqualifiers, Requirements
+    """
+    print(f"Parsing CSV file: {csv_file_path}")
+
     created_count = 0
     updated_count = 0
-    
+    error_count = 0
+
     with open(csv_file_path, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for idx, row in enumerate(reader):
             try:
-                # 1. Get exact carrier name
-                c_name = clean_text(row.get('carrier_name')) or 'Unknown Carrier'
-                carrier, _ = Carrier.objects.get_or_create(name=c_name)
-                
-                # 2. Extract job title and location
-                title = clean_text(row.get('title')) or 'Job Opportunity'
-                state = clean_text(row.get('state'))
-                zip_code = clean_text(row.get('zip_code'))
-                
-                # 3. Build Consolidated Sections
-                
-                # Job Details Section
-                job_details_parts = []
-                if clean_text(row.get('home_time')): job_details_parts.append(f"Home Time: {row['home_time']}")
-                if clean_text(row.get('exact_home_time')): job_details_parts.append(f"Precise Schedule: {row['exact_home_time']}")
-                if clean_text(row.get('account_type')): job_details_parts.append(f"Account: {row['account_type']}")
-                if clean_text(row.get('freight_types')): job_details_parts.append(f"Freight: {row['freight_types']}")
-                if clean_text(row.get('experience_levels')): job_details_parts.append(f"Experience: {row['experience_levels']}")
-                job_details = "\n\n".join(job_details_parts)
-                
-                # Pay Details Section
-                pay_parts = []
-                if clean_text(row.get('pay_range')): pay_parts.append(f"Range: {row['pay_range']}")
-                if clean_text(row.get('average_weekly_pay')): pay_parts.append(f"Average Weekly: {row['average_weekly_pay']}")
-                if clean_text(row.get('salary')): pay_parts.append(f"Salary: {row['salary']}")
-                if clean_text(row.get('bonus_offer')): pay_parts.append(f"Bonus: {row['bonus_offer']}")
-                pay_details = "\n\n".join(pay_parts)
-                
-                # Equipment Section
-                equip_parts = []
-                if clean_text(row.get('transmissions')): equip_parts.append(f"Transmission: {row['transmissions']}")
-                if clean_text(row.get('cameras')): equip_parts.append(f"Cameras: {row['cameras']}")
-                if clean_text(row.get('orientation_details')): equip_parts.append(f"Orientation: {row['orientation_details']}")
-                equipment_details = "\n\n".join(equip_parts)
+                # --- Carrier ---
+                carrier_name = clean_text(row.get('Carrier')) or 'Unknown Carrier'
+                carrier, _ = Carrier.objects.get_or_create(name=carrier_name)
 
-                # 4. Save to Database
+                # --- Basic Job Info ---
+                title = clean_text(row.get('Title')) or 'Job Opportunity'
+                state = clean_text(row.get('State'))
+                zip_code = clean_text(row.get('Zip code'))
+                radius_raw = row.get('Hiring radius miles', '').strip()
+                hiring_radius = parse_radius(radius_raw) if radius_raw else 50
+                multi_zip = clean_text(row.get('Multi zip codes'))
+
+                # --- Consolidated Detail Fields ---
+                job_details = clean_text(row.get('Job Details'))
+                pay_details = clean_text(row.get('Pay Details'))
+                equipment_details = clean_text(row.get('Equipment Details'))
+                key_disqualifiers = clean_text(row.get('Key Disqualifiers'))
+                requirements_details = clean_text(row.get('Requirements'))
+
+                # --- Save to DB ---
                 defaults = {
                     'state': state,
                     'zip_code': zip_code,
-                    'hiring_radius_miles': int(row.get('hiring_radius_miles', 50) or 50),
+                    'hiring_radius_miles': hiring_radius,
+                    'multi_zip_codes': multi_zip,
                     'job_details': job_details,
                     'pay_details': pay_details,
                     'equipment_details': equipment_details,
-                    'is_active': True
+                    'key_disqualifiers': key_disqualifiers,
+                    'requirements_details': requirements_details,
+                    'is_active': True,
                 }
-                
+
                 job, created = Job.objects.update_or_create(
                     carrier=carrier,
                     title=title,
-                    defaults=defaults
+                    defaults=defaults,
                 )
-                
-                if created: created_count += 1
-                else: updated_count += 1
-                
+
+                status = "CREATED" if created else "UPDATED"
+                print(f"  [{status}] {carrier_name} — {title}")
+
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+
             except Exception as e:
-                print(f"Error on row {idx+1}: {e}")
+                print(f"  [ERROR] Row {idx + 2}: {e}")
+                error_count += 1
                 continue
-                
-    print(f"\nImport Finished: {created_count} created, {updated_count} updated.")
+
+    print(f"\n--- Import Complete ---")
+    print(f"  Created : {created_count}")
+    print(f"  Updated : {updated_count}")
+    print(f"  Errors  : {error_count}")
+    print(f"  Total   : {created_count + updated_count + error_count}")
+
 
 if __name__ == '__main__':
+    # Default: Jobs.csv is one level up from this script (project root)
     csv_file = os.path.join(os.path.dirname(__file__), '..', 'Jobs.csv')
+    csv_file = os.path.abspath(csv_file)
+
+    if not os.path.exists(csv_file):
+        # Fallback: check same directory
+        csv_file = os.path.join(os.path.dirname(__file__), 'Jobs.csv')
+
     if os.path.exists(csv_file):
         import_jobs(csv_file)
     else:
-        print("CSV not found.")
+        print(f"ERROR: Jobs.csv not found. Tried: {csv_file}")
+        print("Usage: python import_jobs_from_csv.py")
+        sys.exit(1)

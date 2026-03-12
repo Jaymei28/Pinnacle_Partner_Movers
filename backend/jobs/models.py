@@ -288,3 +288,94 @@ class JobLocation(models.Model):
         verbose_name = "Additional Location"
         verbose_name_plural = "Additional Locations"
 
+
+class Academy(models.Model):
+    """
+    Represents a CDL training academy offered by a carrier (e.g., Swift Academy).
+    These are entry-level training programs, NOT job postings for experienced drivers.
+    """
+    # Relationship to Carrier
+    carrier = models.ForeignKey(
+        Carrier,
+        on_delete=models.CASCADE,
+        related_name='academies',
+        help_text="The carrier sponsoring this academy"
+    )
+
+    # ========== SECTION 1: BASIC IDENTIFICATION & LOCATION ==========
+    name = models.CharField(max_length=200, help_text="Academy name (e.g., Swift Academy - Phoenix)")
+    city = models.CharField(max_length=100, blank=True, null=True, help_text="City where academy is located")
+    state = models.CharField(max_length=2, blank=True, null=True, help_text="State abbreviation")
+    zip_code = models.CharField(max_length=10, blank=True, null=True, help_text="Academy zip code")
+
+    # ========== SECTION 2: TRAINING DETAILS ==========
+    training_type = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Type of training: In-Person, Streaming/Virtual, ELDT Only, etc."
+    )
+    program_length_days = models.IntegerField(
+        blank=True,
+        null=True,
+        help_text="Approximate length of the academy program in days"
+    )
+    tuition_cost = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Tuition cost for the program (e.g., '$1,995')"
+    )
+    tuition_notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Notes on tuition financing, debt-free program, payback terms, etc."
+    )
+
+    # ========== SECTION 3: PAY DURING TRAINING ==========
+    trainee_pay = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Pay rate while in training (e.g., '$300/week' or 'Unpaid')"
+    )
+    orientation_pay = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Pay once officially hired for orientation (e.g., '$300 paid if officially hired')"
+    )
+
+    # ========== SECTION 4: REQUIREMENTS & NOTES ==========
+    requirements = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Requirements to enroll (age, background check, medical, etc.)"
+    )
+    academy_details = models.TextField(
+        blank=True,
+        null=True,
+        help_text="General academy info, schedule, what to expect, orientations, etc."
+    )
+    after_graduation = models.TextField(
+        blank=True,
+        null=True,
+        help_text="What happens after graduating - fleet placement, contract requirements, etc."
+    )
+
+    # Geocoding
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    # Metadata
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.carrier.name})"
+
+    class Meta:
+        ordering = ['carrier', 'state', 'city']
+        verbose_name = "Academy"
+        verbose_name_plural = "Academies"

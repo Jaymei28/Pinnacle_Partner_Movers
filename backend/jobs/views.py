@@ -1,9 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework import generics, viewsets, status
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser
 from .models import Carrier, Job
 from .serializers import CarrierSerializer, JobSerializer
 import re
+import csv
+import io
 from .utils import filter_jobs_by_radius
 
 
@@ -138,3 +141,97 @@ class ParseAndCreateJobView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class ImportCSVView(APIView):
+    """
+    POST /api/jobs/import-csv/
+    Accepts a multipart CSV file upload using the same column format as Jobs.csv:
+      Carrier, Title, State, Zip code, Hiring radius miles,
+      Multi zip codes, Job Details, Pay Details, Equipment Details,
+      Key Disqualifiers, Requirements
+    Returns a JSON summary: created, updated, errors, error_details.
+    """
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        csv_file = request.FILES.get('file')
+        if not csv_file:
+            return Response({'error': 'No file uploaded. Send a CSV as form-data field "file".'}, status=400)
+
+        if not csv_file.name.lower().endswith('.csv'):
+            return Response({'error': 'Uploaded file must be a .csv'}, status=400)
+
+        created_count = 0
+        updated_count = 0
+        error_details = []
+
+        def clean(val):
+            if not val or str(val).strip().lower() in ('n/a', 'nan', 'none', ''):
+                return None
+            return str(val).strip()
+
+        def parse_radius(val):
+            try:
+                return int(str(val).strip())
+            except (ValueError, TypeError):
+                return 50
+
+        try:
+            decoded = csv_file.read().decode('utf-8-sig')  # utf-8-sig handles BOM
+            reader = csv.DictReader(io.StringIO(decoded))
+
+            for idx, row in enumerate(reader):
+                row_num = idx + 2  # 1-indexed, account for header row
+                try:
+                    carrier_name = clean(row.get('Carrier')) or 'Unknown Carrier'
+                    carrier, _ = Carrier.objects.get_or_create(name=carrier_name)
+
+                    title = clean(row.get('Title')) or 'Job Opportunity'
+                    state = clean(row.get('State'))
+                    zip_code = clean(row.get('Zip code'))
+                    radius_raw = str(row.get('Hiring radius miles', '') or '').strip()
+                    hiring_radius = parse_radius(radius_raw) if radius_raw else 50
+                    multi_zip = clean(row.get('Multi zip codes'))
+                    job_details = clean(row.get('Job Details'))
+                    pay_details = clean(row.get('Pay Details'))
+                    equipment_details = clean(row.get('Equipment Details'))
+                    key_disqualifiers = clean(row.get('Key Disqualifiers'))
+                    requirements_details = clean(row.get('Requirements'))
+
+                    defaults = {
+                        'state': state,
+                        'zip_code': zip_code,
+                        'hiring_radius_miles': hiring_radius,
+                        'multi_zip_codes': multi_zip,
+                        'job_details': job_details,
+                        'pay_details': pay_details,
+                        'equipment_details': equipment_details,
+                        'key_disqualifiers': key_disqualifiers,
+                        'requirements_details': requirements_details,
+                        'is_active': True,
+                    }
+
+                    _, created = Job.objects.update_or_create(
+                        carrier=carrier,
+                        title=title,
+                        defaults=defaults,
+                    )
+
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+
+                except Exception as e:
+                    error_details.append({'row': row_num, 'error': str(e)})
+
+        except Exception as e:
+            return Response({'error': f'Failed to parse CSV: {str(e)}'}, status=400)
+
+        return Response({
+            'created': created_count,
+            'updated': updated_count,
+            'errors': len(error_details),
+            'total': created_count + updated_count + len(error_details),
+            'error_details': error_details,
+        }, status=200)

@@ -1,0 +1,125 @@
+Carrier,Title,State,Zip,Pay,Home_Time
+Swift,"Walmart - Arcadia, FL (Dedicated)",FL,34266,"$1,400",Home Weekly
+Swift,"Walmart - Opelika, AL (Dedicated)",AL,36801,"$1,350",Home Weekly
+Swift,"Walmart - Pageland, SC (Dedicated)",SC,29728,"$1,400",Home Weekly
+Swift,"Walmart - Cullman, AL (Dedicated)",AL,35055,"$1,350",Home Weekly
+Swift,"Walmart - Douglas, GA (Dedicated)",GA,31533,"$1,350",Home Weekly
+Swift,"Walmart - Brundidge, AL (Dedicated)",AL,36010,"$1,400",Home Weekly
+Swift,"Walmart - Laurens, SC (Dedicated)",SC,29360,"$1,350",Home Weekly
+Swift,"Walmart - Harrisonville, MO (Dedicated)",MO,64701,"$1,150",Home Weekly
+Swift,"Walmart - Moberly, MO (Dedicated)",MO,65270,"$1,400",Home Weekly
+Swift,"Target - Tifton, GA (Dedicated)",GA,31793,"$1,200",Home Weekly
+Swift,"Target - Midway, GA (Dedicated)",GA,31320,"$1,250",Home Weekly
+Swift,"Target - Ocala, FL Teams",FL,34474,"$1,500",Home Weekly
+Swift,"Target - Lake City, FL Teams",FL,32024,"$1,550",Home Weekly
+Swift,"Lowes - Statesville, NC (Dedicated)",NC,28677,"$1,250",Home Weekly
+Swift,"Ross - Rock Hill, SC (Dedicated)",SC,29730,"$1,200",Home Weekly
+Swift,"Costco - PNW Sumner, WA (Heavy Haul)",WA,98390,"$1,600",Home Weekly
+Swift,Georgia Pacific - Rincon (Dedicated),GA,31326,"$1,450",Home Weekly
+Swift,"Dollar Tree - Ridgefield, WA (Dedicated)",WA,98642,"$1,450",Home Weekly
+Swift,"Auto Haul - Ocala, FL",FL,34474,"$1,600",14 Days Out
+Swift,"Intermodal - Chicago, IL",IL,60601,"$1,450",Home Daily
+Swift,"Intermodal - Lathrop, CA",CA,95330,"$1,500",Home Daily
+Swift,"Intermodal - Hutchins, TX",TX,75134,"$1,050",Home Daily
+Swift,Intermodal - PA Regional,PA,17104,"$1,800",Home Weekly
+Swift,Western Regional - Las Vegas,NV,89101,"$1,300",Home Weekly
+Swift,"Watts - Sparks, NV Solo",NV,89431,"$1,325",Home Weekly
+Swift,Eastern Regional - Statesboro,GA,30458,"$1,250",Every 2 Weeks
+Swift,Eastern Regional - Ocala,FL,34474,"$1,200",Every 2 Weeks
+Swift,"Great Lakes Regional - Detroit, MI",MI,48164,"$1,300",Every 2 Weeks
+Swift,Great Lakes Regional - Gary,IN,46406,"$1,300",Home Weekly
+Swift,"Flatbed - Eastern Regional - Greer, SC",SC,29651,"$1,300",2-3 Weeks Out
+Swift,OTR Flatbed,AZ,85043,"$1,400",2 Weeks Out
+Swift,SLC Linehaul,UT,84120,"$1,200",Every 2 Weeks
+Swift,"Quad Graphics - Sussex, WI",WI,53172,"$1,400",Every 2 Weeks
+JB Hunt,"C&S - Brattleboro, VT (Dedicated)",VT,05301,"$2,115",Home Daily
+JB Hunt,"C&S - North Hatfield, MA (Dedicated)",MA,01038,"$2,115",Home Daily
+JB Hunt,"Ahold - Schodack Landing, NY (Dedicated)",NY,12156,"$1,857",Home Daily
+JB Hunt,"Siegwerk - Des Moines, IA (Dedicated)",IA,50313,"$1,801",Home Weekly
+JB Hunt,"Dollar Tree - Berwick, PA (Dedicated)",PA,18603,"$1,750",Home Weekly
+JB Hunt,"Walmart - Sterling, IL",IL,61081,"$1,550",Home Weekly
+JB Hunt,"Intermodal - Harrisburg, PA",PA,17101,"$1,400",Home Daily
+JB Hunt,"UNFI - Manchester, PA",PA,17345,"$1,673",Home Weekly
+JB Hunt,"Mountaire Frozen - Millsboro, DE",DE,19966,"$1,692",Home Weekly
+US Xpress,"Walmart - Gas City, IN",IN,46933,"$1,400",Home Weekly
+US Xpress,"Dollar General - Marion, IN",IN,46952,"$1,600",Home Weekly
+US Xpress,"FD Ashley, IN (Dedicated)",IN,46705,"$1,850",Home Weekly
+US Xpress,Family Dollar - Front Royal (Doubles),VA,22630,"$1,725",Home Weekly
+US Xpress,TSC Pendleton OTR Tour Fleet,MO,65802,"$1,500",Home Weekly
+US Xpress,"Southeast Regional - Ellenwood, GA",GA,30294,"$1,050",Home Weekly
+US Xpress,I-35 Fleet - Dallas Based,TX,75201,"$1,150",Bi-Weekly
+US Xpress,OTR Team,TN,37421,"$1,550",10-14 Days Out
+US Xpress,OTR Chicago Based,IL,60601,"$1,350",10-14 Days Out
+US Xpress,Lease OTR,TN,37421,Lease,OTR
+CR England,"Sysco - Front Royal, VA (Dedicated)",VA,22630,"$1,500",Home Weekly
+CR England,Smithfield - NC Regional,NC,27577,"$1,386",Home Weekly
+CR England,OTR Team,UT,84104,"$1,400",14 Days Out
+Epes,"Lowes - Adairsville, GA Local",GA,30103,"$1,119",Home Daily
+Epes,"Greif/Caraustar Mill Group - Austell, GA",GA,30106,"$1,150",Home Daily
+Epes,Greif Newark Local,NJ,07101,$925,Home Daily
+Epes,"IP Lafayette, LA Regional",LA,70501,"$1,200",Weekends
+Epes,Shorthaul Regional - Greensboro HQ,NC,27409,"$1,050",Home Weekly
+Knight,"Port Services - Long Beach, CA",CA,90802,"$1,550",Home Daily
+Hogan,SAL Muncie (Dedicated),IN,47302,"$1,500",Home Daily
+Pam,Arlingtonmaster - Laredo to Arlington,TX,78040,"$1,500",Weekly
+Pam,"SHONERSKOWMI - Milan, MI",MI,48160,"$1,350",Weekly
+Swift,Academy - Phoenix,AZ,85043,Training,Academy
+Swift,Academy - Richmond,VA,23231,Training,Academy
+Swift,Academy - Edwardsville,IL,62025,Training,Academy
+Swift,Academy - Laredo,TX,78045,Training,Academy
+Swift,Academy - WVC,UT,84120,Training,Academy
+Swift,Academy - Greer,SC,29651,Training,Academy
+Swift,Academy - Corsicana,TX,75110,Training,Academy
+Swift,Academy - Memphis,TN,38116,Training,Academy
+Swift,Academy - Jurupa Valley,CA,91752,Training,Academy
+Swift,Academy - TransTech Newton,NC,28658,Training,Academy
+Swift,Academy - WVC Streaming,UT,84120,Training,Academy
+Swift,"Academy - Macon, GA",GA,31201,Training,Academy
+Swift,Academy - Columbus - ELDT Only,OH,43228,Training,Academy
+Swift,Regional Fleet 78,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 79,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 80,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 81,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 82,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 83,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 84,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 85,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 86,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 87,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 88,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 89,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 90,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 91,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 92,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 93,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 94,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 95,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 96,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 97,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 98,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 99,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 100,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 101,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 102,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 103,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 104,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 105,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 106,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 107,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 108,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 109,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 110,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 111,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 112,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 113,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 114,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 115,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 116,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 117,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 118,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 119,VAR,00000,"$1,100",Home Weekly
+Swift,Walmart Dedicated Supplement 120,VAR,00000,"$1,350",Home Weekly
+JB Hunt,Local Route 121,VAR,00000,"$1,600",Home Daily
+US Xpress,Dedicated Area 122,VAR,00000,"$1,450",Home Weekly
+Swift,Regional Fleet 123,VAR,00000,"$1,200",Home Weekly
+Epes,Shorthaul Lane 124,VAR,00000,"$1,100",Home Weekly

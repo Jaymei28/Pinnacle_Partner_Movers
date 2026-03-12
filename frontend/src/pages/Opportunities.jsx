@@ -6,24 +6,76 @@ import presentationIcon from '../images/pesentation.svg';
 import preQualIcon from '../images/pre-qualification.svg';
 import appProcessIcon from '../images/application-process.svg';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+const VITE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = VITE_URL.endsWith('/api/') ? VITE_URL : `${VITE_URL.replace(/\/$/, '')}/api/`;
 const API_URL = `${API_BASE_URL}jobs/`;
 
 const Opportunities = () => {
     const [jobs, setJobs] = useState([]);
+    const [allJobs, setAllJobs] = useState([]);  // full unfiltered list for suggestions
     const [loading, setLoading] = useState(false);
     const [selectedJob, setSelectedJob] = useState(null);
     const [activeTab, setActiveTab] = useState('description');
     const [error, setError] = useState(null);
     const [zipCode, setZipCode] = useState('');
     const [searchZip, setSearchZip] = useState('');
+    const [zipSuggestions, setZipSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const [expandedJobId, setExpandedJobId] = useState(null);
     const [openDropdownId, setOpenDropdownId] = useState(null);
     const [carrierSearchQuery, setCarrierSearchQuery] = useState('');
     const [carrierInfoPanel, setCarrierInfoPanel] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const JOBS_PER_PAGE = 10;
+
+    // CSV Import state
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importFile, setImportFile] = useState(null);
+    const [importDragging, setImportDragging] = useState(false);
+    const [importStatus, setImportStatus] = useState('idle'); // idle | uploading | done | error
+    const [importResult, setImportResult] = useState(null);
+    const [importError, setImportError] = useState(null);
 
     const toggleExpand = (jobId) => {
         setExpandedJobId(expandedJobId === jobId ? null : jobId);
+    };
+
+    const handleImportFile = (file) => {
+        if (!file || !file.name.toLowerCase().endsWith('.csv')) {
+            setImportError('Please select a valid .csv file.');
+            return;
+        }
+        setImportFile(file);
+        setImportError(null);
+    };
+
+    const handleImportSubmit = async () => {
+        if (!importFile) return;
+        setImportStatus('uploading');
+        setImportResult(null);
+        setImportError(null);
+        try {
+            const formData = new FormData();
+            formData.append('file', importFile);
+            const res = await axios.post(`${API_BASE_URL}jobs/import-csv/`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+            setImportResult(res.data);
+            setImportStatus('done');
+            fetchJobs(); // Refresh the job list
+        } catch (err) {
+            setImportError(err.response?.data?.error || 'Import failed. Please try again.');
+            setImportStatus('error');
+        }
+    };
+
+    const resetImportModal = () => {
+        setShowImportModal(false);
+        setImportFile(null);
+        setImportDragging(false);
+        setImportStatus('idle');
+        setImportResult(null);
+        setImportError(null);
     };
 
     const fetchJobs = async (driverZip = '') => {
@@ -39,6 +91,9 @@ const Opportunities = () => {
 
             const response = await axios.get(url);
             setJobs(response.data);
+            setCurrentPage(1); // Reset to first page on every fetch
+            // Store unfiltered list on initial load (no zip filter)
+            if (!driverZip) setAllJobs(response.data);
         } catch (err) {
             console.error('Error fetching jobs:', err);
             setError('Technical issue connecting to the job board. Please try again later.');
@@ -47,9 +102,45 @@ const Opportunities = () => {
         }
     };
 
-    const handleSearch = () => {
-        setSearchZip(zipCode.trim());
-        fetchJobs(zipCode.trim());
+    const handleSearch = (zip) => {
+        const z = (zip ?? zipCode).trim();
+        setZipCode(z);
+        setSearchZip(z);
+        setShowSuggestions(false);
+        fetchJobs(z);
+    };
+
+    const handleZipChange = (e) => {
+        const val = e.target.value.replace(/\D/g, '').slice(0, 5);
+        setZipCode(val);
+        if (val.length > 0) {
+            // Build unique zip list from the full job set
+            const source = allJobs.length > 0 ? allJobs : jobs;
+            const seen = new Set();
+            const matches = [];
+            source.forEach(job => {
+                // Primary zip
+                if (job.zip_code && job.zip_code.startsWith(val) && !seen.has(job.zip_code)) {
+                    seen.add(job.zip_code);
+                    matches.push({ zip: job.zip_code, label: `${job.zip_code}  —  ${job.state || ''}` });
+                }
+                // Additional locations
+                if (job.additional_locations) {
+                    job.additional_locations.forEach(loc => {
+                        if (loc.zip_code && loc.zip_code.startsWith(val) && !seen.has(loc.zip_code)) {
+                            seen.add(loc.zip_code);
+                            matches.push({ zip: loc.zip_code, label: `${loc.zip_code}  —  ${loc.state || ''}` });
+                        }
+                    });
+                }
+            });
+            matches.sort((a, b) => a.zip.localeCompare(b.zip));
+            setZipSuggestions(matches);
+            setShowSuggestions(matches.length > 0);
+        } else {
+            setZipSuggestions([]);
+            setShowSuggestions(false);
+        }
     };
 
     const handleViewDetails = (job) => {
@@ -614,23 +705,45 @@ const Opportunities = () => {
                         className="filter-zip-input"
                         placeholder="Search job zipcode"
                         value={zipCode}
-                        onChange={(e) => setZipCode(e.target.value)}
+                        onChange={handleZipChange}
                         onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        onFocus={() => zipSuggestions.length > 0 && setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                         maxLength="5"
+                        autoComplete="off"
                     />
                     {zipCode && (
                         <button className="btn-clear-zip" onClick={handleClearSearch}>&times;</button>
                     )}
+
+                    {/* ZIP SUGGESTIONS DROPDOWN */}
+                    {showSuggestions && zipSuggestions.length > 0 && (
+                        <div className="zip-suggestions-dropdown">
+                            {zipSuggestions.map(({ zip, label }) => (
+                                <button
+                                    key={zip}
+                                    className="zip-suggestion-item"
+                                    onMouseDown={() => handleSearch(zip)}
+                                >
+                                    <span className="suggestion-zip-bold">{zip.slice(0, zipCode.length)}</span>
+                                    <span className="suggestion-zip-rest">{zip.slice(zipCode.length)}</span>
+                                    <span className="suggestion-state">{label.split('—')[1]?.trim()}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="filter-buttons">
-                    <button className="btn-search-main" onClick={handleSearch}>Search</button>
+                    <button className="btn-search-main" onClick={() => handleSearch()}>Search</button>
                 </div>
+
+                <button className="btn-import-csv btn-import-csv--right" onClick={() => setShowImportModal(true)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                    Import CSV
+                </button>
             </div>
 
-            <div className="jobs-count-row">
-                Showing {jobs.length} jobs
-            </div>
 
             {loading ? (
                 <div className="status-msg">Loading jobs...</div>
@@ -659,45 +772,109 @@ const Opportunities = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                jobs.map(job => (
-                                    <tr key={job.id} className="job-table-row">
-                                        <td className="td-carrier">
-                                            {job.carrier?.logo ? (
-                                                <img src={job.carrier.logo} alt="" className="table-carrier-logo" />
-                                            ) : (
-                                                <div className="table-carrier-placeholder">{job.carrier?.name?.charAt(0)}</div>
-                                            )}
-                                        </td>
-                                        <td className="td-title">
-                                            <div className="job-title-link" onClick={() => handleViewDetails(job)}>{job.title}</div>
-                                            <div className="job-pay-sub">
-                                                <svg viewBox="0 0 24 24" className="pay-arrow-icon"><path d="M11 17l-5-5 5-5M18 12H6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                                Avg. Weekly Pay: {job.average_weekly_pay}
-                                            </div>
-                                        </td>
-                                        <td className="td-status">
-                                            <span
-                                                className={`status-badge editable ${job.hiring_status === 'full' ? 'status-full' : 'status-open'}`}
-                                                onClick={(e) => toggleHiringStatus(e, job)}
-                                                title="Click to toggle status"
-                                            >
-                                                {job.hiring_status === 'full' ? 'Marked as full' : 'Open to hiring'}
-                                            </span>
-                                        </td>
-                                        <td className="td-exp">{job.experience_required}</td>
-                                        <td className="td-driver">{job.driver_type}</td>
-                                        <td className="td-freight">{job.freight_type}</td>
-                                        <td className="td-hometime">{job.home_time}</td>
-                                        <td className="td-actions">
-                                            <button className="btn-view-eye" onClick={() => handleViewDetails(job)}>
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
+                                jobs.slice((currentPage - 1) * JOBS_PER_PAGE, currentPage * JOBS_PER_PAGE).map(job => {
+                                    // Strip surrounding quotes and take only the first line for clean display
+                                    const cleanVal = (val) => {
+                                        if (!val) return '';
+                                        let s = String(val).trim();
+                                        // Remove surrounding double quotes
+                                        s = s.replace(/^"+|"+$/g, '');
+                                        // Take only the first line (before any newline/\n)
+                                        s = s.split(/\r?\n|\\n/)[0].trim();
+                                        // Remove remaining leading/trailing quotes
+                                        s = s.replace(/^"+|"+$/g, '').trim();
+                                        // Remove trailing bare " months" that appears after "year" (e.g. "1 year months" → "1 year")
+                                        s = s.replace(/\s+months$/i, (match, offset) => {
+                                            // Only remove if the word before it is "year" or similar (not a number)
+                                            const before = s.substring(0, offset).trim();
+                                            return /year/i.test(before) ? '' : match;
+                                        });
+                                        return s.trim();
+                                    };
+
+                                    return (
+                                        <tr key={job.id} className="job-table-row">
+                                            <td className="td-carrier">
+                                                {job.carrier?.logo ? (
+                                                    <img src={job.carrier.logo} alt="" className="table-carrier-logo" />
+                                                ) : (
+                                                    <div className="table-carrier-placeholder">{job.carrier?.name?.charAt(0)}</div>
+                                                )}
+                                            </td>
+                                            <td className="td-title">
+                                                <div className="job-title-link" onClick={() => handleViewDetails(job)}>{job.title}</div>
+                                                <div className="job-pay-sub">
+                                                    <svg viewBox="0 0 24 24" className="pay-arrow-icon"><path d="M11 17l-5-5 5-5M18 12H6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                                    Avg. Weekly Pay:&nbsp;<strong>{cleanVal(job.average_weekly_pay)}</strong>
+                                                </div>
+                                            </td>
+                                            <td className="td-status">
+                                                <span
+                                                    className={`status-badge editable ${job.hiring_status === 'full' ? 'status-full' : 'status-open'}`}
+                                                    onClick={(e) => toggleHiringStatus(e, job)}
+                                                    title="Click to toggle status"
+                                                >
+                                                    {job.hiring_status === 'full' ? 'Full' : 'Hiring'}
+                                                </span>
+                                            </td>
+                                            <td className="td-exp">{cleanVal(job.experience_required)}</td>
+                                            <td className="td-driver">{cleanVal(job.driver_type)}</td>
+                                            <td className="td-freight">{cleanVal(job.freight_type)}</td>
+                                            <td className="td-hometime">{cleanVal(job.home_time)}</td>
+                                            <td className="td-actions">
+                                                <button className="btn-view-eye" onClick={() => handleViewDetails(job)}>
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
+
+                    {/* PAGINATION CONTROLS */}
+                    {jobs.length > JOBS_PER_PAGE && (() => {
+                        const totalPages = Math.ceil(jobs.length / JOBS_PER_PAGE);
+                        const goToPage = (val) => {
+                            const p = parseInt(val, 10);
+                            if (!isNaN(p)) setCurrentPage(Math.min(totalPages, Math.max(1, p)));
+                        };
+                        return (
+                            <div className="pagination-row">
+                                <button
+                                    className="page-btn page-nav"
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    title="Previous page"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+                                </button>
+
+                                <div className="page-input-wrap">
+                                    <input
+                                        className="page-input"
+                                        type="number"
+                                        min="1"
+                                        max={totalPages}
+                                        value={currentPage}
+                                        onChange={e => goToPage(e.target.value)}
+                                        onKeyDown={e => e.key === 'Enter' && e.target.blur()}
+                                    />
+                                    <span className="page-of-total">of {totalPages}</span>
+                                </div>
+
+                                <button
+                                    className="page-btn page-nav"
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    title="Next page"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                                </button>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 
@@ -947,6 +1124,123 @@ const Opportunities = () => {
                     </div>
                 )
             }
+
+            {/* ===== IMPORT CSV MODAL ===== */}
+            {showImportModal && (
+                <div className="import-modal-overlay" onClick={resetImportModal}>
+                    <div className="import-csv-modal" onClick={e => e.stopPropagation()}>
+                        {/* Close button — absolutely positioned inside modal top-right */}
+                        <button className="import-close-btn" onClick={resetImportModal} title="Close">×</button>
+
+                        {/* Header */}
+                        <div className="import-modal-header">
+                            <div>
+                                <h2 className="import-modal-title">Import Jobs from CSV</h2>
+                                <p className="import-modal-sub">
+                                    Upload a CSV with columns: <strong>Carrier, Title, State, Zip code, Hiring radius miles, Multi zip codes, Job Details, Pay Details, Equipment Details, Key Disqualifiers, Requirements</strong>
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="import-modal-body">
+                            {importStatus === 'idle' || importStatus === 'error' ? (
+                                <>
+                                    {/* Drag & Drop Zone */}
+                                    <div
+                                        className={`import-dropzone ${importDragging ? 'dragging' : ''} ${importFile ? 'has-file' : ''}`}
+                                        onDragOver={e => { e.preventDefault(); setImportDragging(true); }}
+                                        onDragLeave={() => setImportDragging(false)}
+                                        onDrop={e => {
+                                            e.preventDefault();
+                                            setImportDragging(false);
+                                            handleImportFile(e.dataTransfer.files[0]);
+                                        }}
+                                        onClick={() => document.getElementById('csv-file-input').click()}
+                                    >
+                                        <input
+                                            id="csv-file-input"
+                                            type="file"
+                                            accept=".csv"
+                                            style={{ display: 'none' }}
+                                            onChange={e => handleImportFile(e.target.files[0])}
+                                        />
+                                        {importFile ? (
+                                            <div className="import-file-preview">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                                                <span className="import-filename">{importFile.name}</span>
+                                                <span className="import-filesize">{(importFile.size / 1024).toFixed(1)} KB</span>
+                                                <button className="import-remove-file" onClick={e => { e.stopPropagation(); setImportFile(null); setImportError(null); }}>✕ Remove</button>
+                                            </div>
+                                        ) : (
+                                            <div className="import-drop-prompt">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                                                <p>Drag & drop your CSV here, or <span>click to browse</span></p>
+                                                <small>.csv files only</small>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {importError && (
+                                        <div className="import-error-msg">{importError}</div>
+                                    )}
+
+                                    <button
+                                        className="btn-import-submit"
+                                        disabled={!importFile}
+                                        onClick={handleImportSubmit}
+                                    >
+                                        Upload & Import
+                                    </button>
+                                </>
+                            ) : importStatus === 'uploading' ? (
+                                <div className="import-uploading">
+                                    <div className="import-spinner" />
+                                    <p>Importing <strong>{importFile?.name}</strong>…</p>
+                                    <small>This may take a moment for large files.</small>
+                                </div>
+                            ) : importStatus === 'done' && importResult ? (
+                                <div className="import-result">
+                                    <div className="import-result-title">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+                                        Import Complete
+                                    </div>
+                                    <div className="import-stats">
+                                        <div className="import-stat-card created">
+                                            <span className="stat-num">{importResult.created}</span>
+                                            <span className="stat-label">Created</span>
+                                        </div>
+                                        <div className="import-stat-card updated">
+                                            <span className="stat-num">{importResult.updated}</span>
+                                            <span className="stat-label">Updated</span>
+                                        </div>
+                                        <div className="import-stat-card errors">
+                                            <span className="stat-num">{importResult.errors}</span>
+                                            <span className="stat-label">Errors</span>
+                                        </div>
+                                    </div>
+
+                                    {importResult.error_details?.length > 0 && (
+                                        <details className="import-error-details">
+                                            <summary>Show {importResult.error_details.length} row error(s)</summary>
+                                            <ul>
+                                                {importResult.error_details.map((e, i) => (
+                                                    <li key={i}>Row {e.row}: {e.error}</li>
+                                                ))}
+                                            </ul>
+                                        </details>
+                                    )}
+
+                                    <div className="import-done-actions">
+                                        <button className="btn-import-submit" onClick={resetImportModal}>Done</button>
+                                        <button className="btn-import-again" onClick={() => { setImportStatus('idle'); setImportFile(null); setImportResult(null); }}>Import Another</button>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
