@@ -30,6 +30,7 @@ class Carrier(models.Model):
     benefit_military_program = models.TextField(blank=True, null=True, help_text="Military benefits program")
     benefit_tuition_program = models.TextField(blank=True, null=True, help_text="Debt-free tuition program details")
     benefit_other = models.TextField(blank=True, null=True, help_text="Any other benefits")
+    benefits = models.TextField(blank=True, null=True, help_text="Consolidated benefits (paste table data here)")
     
     # Process & Qualifications
     presentation = models.TextField(blank=True, null=True, help_text="Carrier presentation details (paste table data here)")

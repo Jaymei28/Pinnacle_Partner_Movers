@@ -180,110 +180,105 @@ const Opportunities = () => {
         let processedText = String(text).replace(/\\n/g, '\n');
         const lines = processedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        if (lines.length <= 1) return renderFormattedText(text, true);
+        if (lines.length === 0) return null;
 
-        // DELIMITER DETECTION (Pipe, Tab, or Comma)
-        // Check first few lines for the best delimiter
+        // DELIMITER DETECTION
         let delimiter = null;
-        for (let i = 0; i < Math.min(lines.length, 3); i++) {
-            const line = lines[i];
+        for (let line of lines) {
             if (line.includes('|')) { delimiter = '|'; break; }
             if (line.includes('\t')) { delimiter = '\t'; break; }
-            if (line.includes(',')) { delimiter = ','; break; }
+            if (line.includes(',')) {
+                // Check if it's a CSV-like line
+                const commaCount = (line.match(/,/g) || []).length;
+                if (commaCount >= 1) {
+                    delimiter = ',';
+                    break;
+                }
+            }
         }
 
-        // Special case: If first line is "PRESENTATION TOPIC DESCRIPTION" with no delimiter, 
-        // and lines below it are delimited, we should still treat it as a table.
-        // We'll manually inject the header split if needed.
-        const firstLine = lines[0];
-        const isPresentationHeader = firstLine.toUpperCase() === "PRESENTATION TOPIC DESCRIPTION";
-
-        if (delimiter || isPresentationHeader) {
-            const splitLine = (line, delim) => {
-                if (!delim) return [line]; // No split if no delimiter
-                if (delim !== ',') return line.split(delim).map(c => c.trim());
-
-                // Robust CSV split for comma delimiter (handles quotes)
-                const result = [];
-                let currentCell = '';
-                let inQuotes = false;
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === '"') {
-                        if (inQuotes && line[i + 1] === '"') {
-                            currentCell += '"';
-                            i++;
-                        } else {
-                            inQuotes = !inQuotes;
-                        }
-                    } else if (char === ',' && !inQuotes) {
-                        result.push(currentCell.trim());
-                        currentCell = '';
-                    } else {
-                        currentCell += char;
-                    }
+        const splitLine = (line, delim) => {
+            if (!delim) {
+                // FALLBACK: If no delimiter, but contains a colon, treat as key:value
+                if (line.includes(':') && line.indexOf(':') < 35) {
+                    const idx = line.indexOf(':');
+                    return [line.substring(0, idx).trim(), line.substring(idx + 1).trim()];
                 }
-                result.push(currentCell.trim());
-                return result.map(c => c.replace(/^"|"$/g, ''));
-            };
-
-            const rows = [];
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                if (delimiter && (line.includes(delimiter) || (delimiter === ',' && line.startsWith('"')))) {
-                    const cells = splitLine(line, delimiter);
-                    if (cells.length > 0 && cells[0] === '' && rows.length > 0) {
-                        const lastRow = rows[rows.length - 1];
-                        const lastCellIndex = Math.min(lastRow.length - 1, cells.length - 1);
-                        if (lastCellIndex >= 0) lastRow[lastCellIndex] += '\n' + cells.slice(1).join(' ');
-                    } else {
-                        rows.push(cells);
-                    }
-                } else {
-                    if (rows.length > 0) {
-                        const lastRow = rows[rows.length - 1];
-                        const lastCellIndex = lastRow.length - 1;
-                        lastRow[lastCellIndex] += '\n' + line;
-                    } else {
-                        // First line with no delimiter
-                        rows.push([line]);
-                    }
-                }
+                return [line];
             }
+            if (delim !== ',') return line.split(delim).map(c => c.trim());
 
-            // FILTER ROWS based on query
-            const filteredRows = filterQuery
-                ? rows.filter(row => row.some(cell => cell.toLowerCase().includes(filterQuery.toLowerCase())))
-                : rows;
-
-            if (filteredRows.length === 0 && filterQuery) {
-                return (
-                    <div className="no-search-results" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)', border: '1px dashed var(--border)', borderRadius: '8px' }}>
-                        No matches found for "{filterQuery}"
-                    </div>
-                );
+            // Robust CSV split
+            const result = [];
+            let currentCell = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') { currentCell += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(currentCell.trim());
+                    currentCell = '';
+                } else { currentCell += char; }
             }
+            result.push(currentCell.trim());
+            return result.map(c => c.replace(/^"|"$/g, ''));
+        };
 
+        const rows = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const cells = splitLine(line, delimiter);
+
+            if (cells.length > 0 && cells[0] === '' && rows.length > 0) {
+                const lastRow = rows[rows.length - 1];
+                const lastCellIndex = lastRow.length - 1;
+                lastRow[lastCellIndex] += '\n' + cells.slice(1).join(' ');
+            } else {
+                rows.push(cells);
+            }
+        }
+
+        // FILTER ROWS
+        const filteredRows = filterQuery
+            ? rows.filter(row => row.some(cell => cell.toLowerCase().includes(filterQuery.toLowerCase())))
+            : rows;
+
+        if (filteredRows.length === 0 && filterQuery) {
             return (
-                <div className="premium-table-wrapper">
-                    <table className="premium-data-table">
-                        <tbody>
-                            {filteredRows.map((row, idx) => (
-                                <tr key={idx} className="table-data-row">
-                                    {row.map((cell, i) => (
-                                        <td key={i} className={idx === 0 ? "table-header-cell" : "table-value-cell"}>
-                                            {renderFormattedText(cell, true)}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="no-search-results" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)', border: '1px dashed var(--border)', borderRadius: '8px' }}>
+                    No matches found for "{filterQuery}"
                 </div>
             );
         }
 
-        return renderFormattedText(text);
+        return (
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
+                    <tbody>
+                        {filteredRows.map((row, idx) => (
+                            <tr key={idx} className="table-data-row">
+                                {row.map((cell, i) => {
+                                    const isHeader = idx === 0 || (row.length === 1 && (cell === cell.toUpperCase() && cell.length > 3 && !/[.\?!]$/.test(cell)));
+                                    const isLabel = i === 0 && row.length === 2;
+
+                                    return (
+                                        <td
+                                            key={i}
+                                            className={isHeader ? "table-header-cell" : isLabel ? "table-label-cell" : "table-value-cell"}
+                                            colSpan={row.length === 1 ? "2" : "1"}
+                                        >
+                                            {renderFormattedText(cell, true)}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
     };
 
     const renderOrientationTable = (text) => {
@@ -509,93 +504,62 @@ const Opportunities = () => {
         if (lines.length === 0) return null;
 
         return (
-            <div className="app-process-container">
-                {lines.map((line, index) => {
-                    const lineLower = line.toLowerCase();
-                    const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
+                    <tbody>
+                        {lines.map((line, index) => {
+                            const lineLower = line.toLowerCase();
+                            const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
 
-                    // 1. TITLE (Large, Bold)
-                    if (index === 0 && (lineLower.includes('application process') || line.length < 40)) {
-                        return <div key={index} className="app-process-title">{line}</div>;
-                    }
+                            // Detect special phases for coloring
+                            let specialClass = "";
+                            if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
+                            else if (lineLower === 'follow up') specialClass = "app-heading-green";
+                            else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
+                            else if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) specialClass = "app-heading-purple";
+                            else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-gray";
 
-                    // 2. STEP X (Red, Underlined)
-                    if (/^step\s+\d+/i.test(line)) {
-                        return <div key={index} className="app-step-red">{line}</div>;
-                    }
+                            // Header detection (First line or all caps/short)
+                            const isHeaderLine = (index === 0 && (lineLower.includes('application process') || line.length < 40)) ||
+                                (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
 
-                    // 3. FOLLOW UP (Green, Underlined)
-                    if (lineLower === 'follow up') {
-                        return <div key={index} className="app-heading-green">{line}</div>;
-                    }
+                            if (isHeaderLine || specialClass) {
+                                return (
+                                    <tr key={index} className="table-header-row">
+                                        <td colSpan="2" className={`table-header-cell ${specialClass}`}>
+                                            {line}
+                                        </td>
+                                    </tr>
+                                );
+                            }
 
-                    // 4. APPROVED / NOW WHAT (Blue, Underlined)
-                    if (lineLower.includes('approved') && lineLower.includes('now what')) {
-                        return <div key={index} className="app-heading-blue">{line}</div>;
-                    }
+                            // Colon check for Label: Value
+                            if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
+                                const colonIdx = cleanLine.indexOf(':');
+                                const label = cleanLine.substring(0, colonIdx).trim();
+                                const value = cleanLine.substring(colonIdx + 1).trim();
 
-                    // 5. EXPECTED / CAN EXPECT (Purple, Underlined)
-                    if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) {
-                        return <div key={index} className="app-heading-purple">{line}</div>;
-                    }
+                                return (
+                                    <tr key={index} className="table-data-row">
+                                        <td className="table-label-cell">{label}</td>
+                                        <td className="table-value-cell">{renderFormattedText(value, true)}</td>
+                                    </tr>
+                                );
+                            }
 
-                    // 6. GLOSSARY (Gray, Underlined)
-                    if (lineLower.includes('glossary of terms')) {
-                        return <div key={index} className="app-heading-gray">{line}</div>;
-                    }
-
-                    // 7. BULLETS (Dot on left)
-                    const isBullet = /^[•\*\-]/.test(line) || (index > 2 && line.length < 100 && lines[index - 1].includes(':'));
-
-                    // 8. LINKS
-                    const isLink = cleanLine.startsWith('http') || cleanLine.includes('.com/') || cleanLine.includes('.org/');
-
-                    if (isBullet) {
-                        return (
-                            <div key={index} className="app-bullet-item">
-                                {isLink ? (
-                                    <a href={cleanLine.startsWith('http') ? cleanLine : `https://${cleanLine}`} target="_blank" rel="noopener noreferrer" className="app-link">
-                                        {cleanLine}
-                                    </a>
-                                ) : (
-                                    <span>{cleanLine}</span>
-                                )}
-                            </div>
-                        );
-                    }
-
-                    // 9. BOLD KEY/VALUE (e.g. ALS: text)
-                    if (cleanLine.includes(':') && cleanLine.indexOf(':') < 30) {
-                        const colonIdx = cleanLine.indexOf(':');
-                        const label = cleanLine.substring(0, colonIdx + 1);
-                        const rest = cleanLine.substring(colonIdx + 1);
-                        return (
-                            <div key={index} className="app-paragraph">
-                                <span className="app-text-bold">{label}</span>
-                                {rest.includes('http') ? (
-                                    <a href={rest.trim().startsWith('http') ? rest.trim() : `https://${rest.trim()}`} target="_blank" rel="noopener noreferrer" className="app-link" style={{ marginLeft: '4px' }}>
-                                        {rest.trim()}
-                                    </a>
-                                ) : (
-                                    <span>{rest}</span>
-                                )}
-                            </div>
-                        );
-                    }
-
-                    // 10. DEFAULT PARAGRAPH
-                    return (
-                        <div key={index} className="app-paragraph">
-                            {isLink ? (
-                                <a href={cleanLine.startsWith('http') ? cleanLine : `https://${cleanLine}`} target="_blank" rel="noopener noreferrer" className="app-link">
-                                    {cleanLine}
-                                </a>
-                            ) : (
-                                cleanLine
-                            )}
-                        </div>
-                    );
-                })}
+                            // Default row
+                            const isBullet = /^[•\*\-]/.test(line);
+                            return (
+                                <tr key={index} className="table-data-row">
+                                    <td colSpan="2" className="table-full-cell">
+                                        {isBullet && <span className="bullet-dot">•</span>}
+                                        {renderFormattedText(cleanLine, true)}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
             </div>
         );
     };
@@ -914,6 +878,8 @@ const Opportunities = () => {
                                 <button className={`modal-tab-btn ${activeTab === 'disqualifiers' ? 'active' : ''}`} onClick={() => setActiveTab('disqualifiers')}>Key Disqualifiers</button>
                                 <button className={`modal-tab-btn ${activeTab === 'benefits' ? 'active' : ''}`} onClick={() => setActiveTab('benefits')}>Benefits</button>
                                 <button className={`modal-tab-btn ${activeTab === 'requirements' ? 'active' : ''}`} onClick={() => setActiveTab('requirements')}>Requirements</button>
+                                <button className={`modal-tab-btn ${activeTab === 'presentation' ? 'active' : ''}`} onClick={() => setActiveTab('presentation')}>Presentation</button>
+                                <button className={`modal-tab-btn ${activeTab === 'pre_qualifications' ? 'active' : ''}`} onClick={() => setActiveTab('pre_qualifications')}>Pre-Qualifications</button>
                                 <button className={`modal-tab-btn ${activeTab === 'app_process' ? 'active' : ''}`} onClick={() => setActiveTab('app_process')}>Application Process</button>
                             </div>
 
@@ -978,39 +944,52 @@ const Opportunities = () => {
                                     )}
 
                                     {activeTab === 'benefits' && (
-                                        <div className="premium-table-wrapper">
-                                            <table className="premium-data-table">
-                                                <tbody>
-                                                    <tr className="table-header-row">
-                                                        <td className="table-header-cell">Category</td>
-                                                        <td className="table-header-cell">Details</td>
-                                                    </tr>
-                                                    {selectedJob.carrier?.benefit_medical_dental_vision && (
-                                                        <tr className="table-data-row">
-                                                            <td className="table-label-cell">Medical / Dental / Vision</td>
-                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_medical_dental_vision}</td>
+                                        <div className="job-summary-container">
+                                            {selectedJob.carrier?.benefits && (
+                                                <>
+                                                    <div className="lane-section-title" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>
+                                                        Benefits Summary
+                                                    </div>
+                                                    {renderGenericTable(selectedJob.carrier.benefits)}
+                                                    <div className="lane-section-title" style={{ fontWeight: '800', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
+                                                        Additional Benefit Details
+                                                    </div>
+                                                </>
+                                            )}
+                                            <div className="premium-table-wrapper">
+                                                <table className="premium-data-table">
+                                                    <tbody>
+                                                        <tr className="table-header-row">
+                                                            <td className="table-header-cell">Category</td>
+                                                            <td className="table-header-cell">Details</td>
                                                         </tr>
-                                                    )}
-                                                    {selectedJob.carrier?.benefit_401k && (
-                                                        <tr className="table-data-row">
-                                                            <td className="table-label-cell">401(k) Retirement</td>
-                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_401k}</td>
-                                                        </tr>
-                                                    )}
-                                                    {selectedJob.carrier?.benefit_paid_vacation && (
-                                                        <tr className="table-data-row">
-                                                            <td className="table-label-cell">Paid Vacation</td>
-                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_paid_vacation}</td>
-                                                        </tr>
-                                                    )}
-                                                    {selectedJob.carrier?.benefit_weekly_paycheck && (
-                                                        <tr className="table-data-row">
-                                                            <td className="table-label-cell">Weekly Pay</td>
-                                                            <td className="table-value-cell">{selectedJob.carrier.benefit_weekly_paycheck}</td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
+                                                        {selectedJob.carrier?.benefit_medical_dental_vision && (
+                                                            <tr className="table-data-row">
+                                                                <td className="table-label-cell">Medical / Dental / Vision</td>
+                                                                <td className="table-value-cell">{selectedJob.carrier.benefit_medical_dental_vision}</td>
+                                                            </tr>
+                                                        )}
+                                                        {selectedJob.carrier?.benefit_401k && (
+                                                            <tr className="table-data-row">
+                                                                <td className="table-label-cell">401(k) Retirement</td>
+                                                                <td className="table-value-cell">{selectedJob.carrier.benefit_401k}</td>
+                                                            </tr>
+                                                        )}
+                                                        {selectedJob.carrier?.benefit_paid_vacation && (
+                                                            <tr className="table-data-row">
+                                                                <td className="table-label-cell">Paid Vacation</td>
+                                                                <td className="table-value-cell">{selectedJob.carrier.benefit_paid_vacation}</td>
+                                                            </tr>
+                                                        )}
+                                                        {selectedJob.carrier?.benefit_weekly_paycheck && (
+                                                            <tr className="table-data-row">
+                                                                <td className="table-label-cell">Weekly Pay</td>
+                                                                <td className="table-value-cell">{selectedJob.carrier.benefit_weekly_paycheck}</td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
                                         </div>
                                     )}
 
@@ -1023,6 +1002,18 @@ const Opportunities = () => {
                                     {activeTab === 'app_process' && (
                                         <div className="lane-section-content">
                                             {selectedJob.carrier?.app_process ? renderAppProcess(selectedJob.carrier.app_process) : 'Please contact the carrier for application details.'}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'presentation' && (
+                                        <div className="lane-section-content">
+                                            {selectedJob.carrier?.presentation ? renderGenericTable(selectedJob.carrier.presentation, carrierSearchQuery) : 'No presentation details available for this carrier.'}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'pre_qualifications' && (
+                                        <div className="lane-section-content">
+                                            {selectedJob.carrier?.pre_qualifications ? renderGenericTable(selectedJob.carrier.pre_qualifications, carrierSearchQuery) : 'No pre-qualification details available for this carrier.'}
                                         </div>
                                     )}
                                 </div>

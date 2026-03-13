@@ -47,62 +47,127 @@ const Carriers = () => {
         let processedText = String(text).replace(/\\n/g, '\n');
         const lines = processedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-        if (lines.length <= 1) return renderFormattedText(text);
+        if (lines.length === 0) return null;
 
-        // DELIMITER DETECTION (Pipe or Tab)
-        const firstLine = lines[0];
+        // DELIMITER DETECTION
         let delimiter = null;
-        if (firstLine.includes('|')) delimiter = '|';
-        else if (firstLine.includes('\t')) delimiter = '\t';
+        for (let line of lines) {
+            if (line.includes('|')) { delimiter = '|'; break; }
+            if (line.includes('\t')) { delimiter = '\t'; break; }
+            if (line.includes(',')) {
+                const commaCount = (line.match(/,/g) || []).length;
+                if (commaCount >= 1) { delimiter = ','; break; }
+            }
+        }
 
-        // CASE 1: ORIENTATION TABLE (Specific Keywords)
+        const splitLine = (line, delim) => {
+            if (!delim) {
+                if (line.includes(':') && line.indexOf(':') < 35) {
+                    const idx = line.indexOf(':');
+                    return [line.substring(0, idx).trim(), line.substring(idx + 1).trim()];
+                }
+                return [line];
+            }
+            if (delim !== ',') return line.split(delim).map(c => c.trim());
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                if (line[i] === '"') inQuotes = !inQuotes;
+                else if (line[i] === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+                else { current += line[i]; }
+            }
+            result.push(current.trim());
+            return result.map(c => c.replace(/^"|"$/g, ''));
+        };
+
+        const firstLine = lines[0];
         const orientationKeywords = ['city', 'state', 'days', 'time', 'address', 'terminal'];
-        const isOrientationTable = orientationKeywords.some(k => firstLine.toLowerCase().includes(k));
-
-        if (isOrientationTable) {
+        if (orientationKeywords.some(k => firstLine.toLowerCase().includes(k))) {
             return renderOrientationTable(text);
         }
 
-        // CASE 2: GENERIC TABLE (Delimited)
-        if (delimiter) {
-            const headers = lines[0].split(delimiter).map(h => h.trim());
-            const rows = lines.slice(1).map(line => line.split(delimiter).map(c => c.trim()));
+        const rows = lines.map(line => splitLine(line, delimiter));
 
-            return (
-                <div className="orientation-table-wrapper">
-                    <table className="orientation-table">
-                        <thead>
-                            <tr>
-                                {headers.map((h, i) => (
-                                    <th key={i}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            {h.toLowerCase().includes('presentation') && <i className="lucide-refresh-cw" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
-                                            {h.toLowerCase().includes('topic') && <i className="lucide-git-branch" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
-                                            {h.toLowerCase().includes('description') && <i className="lucide-file-text" style={{ fontSize: '0.9rem', opacity: 0.7 }}></i>}
-                                            {h}
-                                        </div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, idx) => (
-                                <tr key={idx}>
-                                    {row.map((cell, i) => (
-                                        <td key={i} style={i === 0 ? { fontWeight: '500', color: 'var(--text-dark)' } : {}}>
+        return (
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
+                    <tbody>
+                        {rows.map((row, idx) => (
+                            <tr key={idx} className="table-data-row">
+                                {row.map((cell, i) => {
+                                    const isHeader = idx === 0 || (row.length === 1 && cell === cell.toUpperCase() && cell.length > 3);
+                                    const isLabel = i === 0 && row.length === 2;
+                                    return (
+                                        <td
+                                            key={i}
+                                            className={isHeader ? "table-header-cell" : isLabel ? "table-label-cell" : "table-value-cell"}
+                                            colSpan={row.length === 1 ? "2" : "1"}
+                                        >
                                             {renderFormattedText(cell)}
                                         </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        }
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
-        // FALLBACK: Just formatted text
-        return renderFormattedText(text);
+    const renderAppProcess = (text) => {
+        if (!text) return null;
+        let processedText = String(text).replace(/\\n/g, '\n');
+        const lines = processedText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        if (lines.length === 0) return null;
+
+        return (
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
+                    <tbody>
+                        {lines.map((line, index) => {
+                            const lineLower = line.toLowerCase();
+                            const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
+
+                            let specialClass = "";
+                            if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
+                            else if (lineLower === 'follow up') specialClass = "app-heading-green";
+                            else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
+
+                            const isHeader = (index === 0 && line.length < 40) || (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
+
+                            if (isHeader || specialClass) {
+                                return (
+                                    <tr key={index} className="table-header-row">
+                                        <td colSpan="2" className={`table-header-cell ${specialClass}`}>
+                                            {line}
+                                        </td>
+                                    </tr>
+                                );
+                            }
+
+                            if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
+                                const idx = cleanLine.indexOf(':');
+                                return (
+                                    <tr key={index} className="table-data-row">
+                                        <td className="table-label-cell">{cleanLine.substring(0, idx).trim()}</td>
+                                        <td className="table-value-cell">{renderFormattedText(cleanLine.substring(idx + 1).trim())}</td>
+                                    </tr>
+                                );
+                            }
+
+                            return (
+                                <tr key={index} className="table-data-row">
+                                    <td colSpan="2" className="table-full-cell">{renderFormattedText(line)}</td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        );
     };
 
     const renderOrientationTable = (text) => {
@@ -159,23 +224,23 @@ const Carriers = () => {
         }
 
         return (
-            <div className="orientation-table-wrapper">
-                <table className="orientation-table">
+            <div className="premium-table-wrapper">
+                <table className="premium-data-table">
                     <thead>
-                        <tr>
-                            <th>City / State</th>
-                            <th>Days</th>
-                            <th>Start Time</th>
-                            <th>Terminal Address</th>
+                        <tr className="table-header-row">
+                            <th className="table-header-cell">City / State</th>
+                            <th className="table-header-cell">Days</th>
+                            <th className="table-header-cell">Start Time</th>
+                            <th className="table-header-cell">Terminal Address</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((row, idx) => (
-                            <tr key={idx}>
-                                <td className="cell-city">{row.cityState}</td>
-                                <td className="cell-days">{row.days}</td>
-                                <td className="cell-time">{row.time}</td>
-                                <td className="cell-address">{row.address}</td>
+                            <tr key={idx} className="table-data-row">
+                                <td className="table-value-cell" style={{ fontWeight: '500' }}>{row.cityState}</td>
+                                <td className="table-value-cell">{row.days}</td>
+                                <td className="table-value-cell">{row.time}</td>
+                                <td className="table-value-cell">{row.address}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -413,6 +478,12 @@ const Carriers = () => {
                         <div className="lane-info-container">
                             <div className="lane-side-label">Company Benefits & Info</div>
                             <div className="lane-info-content">
+                                {selectedCarrier.benefits && (
+                                    <div className="lane-section">
+                                        <h5 className="lane-section-title">Benefits Summary</h5>
+                                        <div className="lane-section-content">{renderGenericTable(selectedCarrier.benefits)}</div>
+                                    </div>
+                                )}
                                 {selectedCarrier.benefit_401k && (
                                     <div className="lane-section">
                                         <h5 className="lane-section-title">401(k)</h5>
@@ -502,7 +573,7 @@ const Carriers = () => {
                                     {selectedCarrier.app_process && (
                                         <div className="lane-section">
                                             <h5 className="lane-section-title">Application Process</h5>
-                                            <div className="lane-section-content">{renderFormattedText(selectedCarrier.app_process)}</div>
+                                            <div className="lane-section-content">{renderAppProcess(selectedCarrier.app_process)}</div>
                                         </div>
                                     )}
                                 </div>
@@ -591,6 +662,72 @@ const Carriers = () => {
                                     />
                                 </div>
                                 <p className="help-text">Select a new image to replace the current logo.</p>
+                            </div>
+
+                            <div className="form-section-divider">
+                                <h4>Company Benefits (Granular)</h4>
+                                <p className="section-help">Add individual benefit details here.</p>
+                            </div>
+
+                            <div className="form-grid-two-col">
+                                <div className="form-group">
+                                    <label>401(k)</label>
+                                    <textarea rows="2" value={editingCarrier.benefit_401k || ''} onChange={e => setEditingCarrier({ ...editingCarrier, benefit_401k: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Medical, Dental & Vision</label>
+                                    <textarea rows="2" value={editingCarrier.benefit_medical_dental_vision || ''} onChange={e => setEditingCarrier({ ...editingCarrier, benefit_medical_dental_vision: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Disability & Life</label>
+                                    <textarea rows="2" value={editingCarrier.benefit_disability_life || ''} onChange={e => setEditingCarrier({ ...editingCarrier, benefit_disability_life: e.target.value })} />
+                                </div>
+                                <div className="form-group">
+                                    <label>Paid Vacation</label>
+                                    <textarea rows="2" value={editingCarrier.benefit_paid_vacation || ''} onChange={e => setEditingCarrier({ ...editingCarrier, benefit_paid_vacation: e.target.value })} />
+                                </div>
+                            </div>
+
+                            <div className="form-section-divider">
+                                <h4>Data Tables & Processes</h4>
+                                <p className="section-help">Paste CSV/Table data (Category,Value) for Benefits, Presentation and Qualifications.</p>
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Benefits Summary (Table Format)</label>
+                                <textarea
+                                    rows="5"
+                                    placeholder="Category,Details&#10;Bonus,$500"
+                                    value={editingCarrier.benefits || ''}
+                                    onChange={e => setEditingCarrier({ ...editingCarrier, benefits: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Pre-Qualifications (Table Format)</label>
+                                <textarea
+                                    rows="5"
+                                    value={editingCarrier.pre_qualifications || ''}
+                                    onChange={e => setEditingCarrier({ ...editingCarrier, pre_qualifications: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Presentation (Table Format)</label>
+                                <textarea
+                                    rows="10"
+                                    value={editingCarrier.presentation || ''}
+                                    onChange={e => setEditingCarrier({ ...editingCarrier, presentation: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="form-group full-width">
+                                <label>Application Process Steps</label>
+                                <textarea
+                                    rows="10"
+                                    value={editingCarrier.app_process || ''}
+                                    onChange={e => setEditingCarrier({ ...editingCarrier, app_process: e.target.value })}
+                                />
                             </div>
 
                             <div className="modal-footer-new">
