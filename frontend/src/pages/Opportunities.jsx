@@ -229,13 +229,20 @@ const Opportunities = () => {
         const rows = [];
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
-            const cells = splitLine(line, delimiter);
+            let cells = splitLine(line, delimiter);
+
+            // User request: "I dont want to include the presentation column I only want thhe topic and description"
+            // If we have 3 columns, we usually have Category/Presentation, Topic, Description.
+            // We strip the first one to keep it clean.
+            if (cells.length === 3) {
+                cells = cells.slice(1);
+            }
 
             if (cells.length > 0 && cells[0] === '' && rows.length > 0) {
                 const lastRow = rows[rows.length - 1];
                 const lastCellIndex = lastRow.length - 1;
                 lastRow[lastCellIndex] += '\n' + cells.slice(1).join(' ');
-            } else {
+            } else if (cells.length > 0) {
                 rows.push(cells);
             }
         }
@@ -260,6 +267,7 @@ const Opportunities = () => {
                         {filteredRows.map((row, idx) => (
                             <tr key={idx} className="table-data-row">
                                 {row.map((cell, i) => {
+                                    // Robust check for header lines (index 0 or all caps/short)
                                     const isHeader = idx === 0 || (row.length === 1 && (cell === cell.toUpperCase() && cell.length > 3 && !/[.\?!]$/.test(cell)));
                                     const isLabel = i === 0 && row.length === 2;
 
@@ -269,7 +277,7 @@ const Opportunities = () => {
                                             className={isHeader ? "table-header-cell" : isLabel ? "table-label-cell" : "table-value-cell"}
                                             colSpan={row.length === 1 ? "2" : "1"}
                                         >
-                                            {renderFormattedText(cell, true)}
+                                            {isHeader || isLabel ? cell.replace(/\*\*/g, '') : renderFormattedText(cell, true)}
                                         </td>
                                     );
                                 })}
@@ -870,8 +878,6 @@ const Opportunities = () => {
                                 <button className={`modal-tab-btn ${activeTab === 'disqualifiers' ? 'active' : ''}`} onClick={() => setActiveTab('disqualifiers')}>Key Disqualifiers</button>
                                 <button className={`modal-tab-btn ${activeTab === 'benefits' ? 'active' : ''}`} onClick={() => setActiveTab('benefits')}>Benefits</button>
                                 <button className={`modal-tab-btn ${activeTab === 'requirements' ? 'active' : ''}`} onClick={() => setActiveTab('requirements')}>Requirements</button>
-                                <button className={`modal-tab-btn ${activeTab === 'presentation' ? 'active' : ''}`} onClick={() => setActiveTab('presentation')}>Presentation</button>
-                                <button className={`modal-tab-btn ${activeTab === 'pre_qualifications' ? 'active' : ''}`} onClick={() => setActiveTab('pre_qualifications')}>Pre-Qualifications</button>
                                 <button className={`modal-tab-btn ${activeTab === 'app_process' ? 'active' : ''}`} onClick={() => setActiveTab('app_process')}>Application Process</button>
                             </div>
 
@@ -910,9 +916,6 @@ const Opportunities = () => {
                                                 </table>
                                             </div>
 
-                                            <div className="lane-section-title" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>
-                                                Job Details
-                                            </div>
                                             {renderKeyDataTable(selectedJob.job_details)}
                                         </div>
                                     )}
@@ -938,15 +941,9 @@ const Opportunities = () => {
                                     {activeTab === 'benefits' && (
                                         <div className="job-summary-container">
                                             {selectedJob.carrier?.benefits && (
-                                                <>
-                                                    <div className="lane-section-title" style={{ fontWeight: '800', marginBottom: '0.5rem' }}>
-                                                        Benefits Summary
-                                                    </div>
+                                                <div style={{ marginBottom: '1.5rem' }}>
                                                     {renderGenericTable(selectedJob.carrier.benefits)}
-                                                    <div className="lane-section-title" style={{ fontWeight: '800', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                                                        Additional Benefit Details
-                                                    </div>
-                                                </>
+                                                </div>
                                             )}
                                             <div className="premium-table-wrapper">
                                                 <table className="premium-data-table">
@@ -994,18 +991,6 @@ const Opportunities = () => {
                                     {activeTab === 'app_process' && (
                                         <div className="lane-section-content">
                                             {selectedJob.carrier?.app_process ? renderAppProcess(selectedJob.carrier.app_process) : 'Please contact the carrier for application details.'}
-                                        </div>
-                                    )}
-
-                                    {activeTab === 'presentation' && (
-                                        <div className="lane-section-content">
-                                            {selectedJob.carrier?.presentation ? renderGenericTable(selectedJob.carrier.presentation, carrierSearchQuery) : 'No presentation details available for this carrier.'}
-                                        </div>
-                                    )}
-
-                                    {activeTab === 'pre_qualifications' && (
-                                        <div className="lane-section-content">
-                                            {selectedJob.carrier?.pre_qualifications ? renderGenericTable(selectedJob.carrier.pre_qualifications, carrierSearchQuery) : 'No pre-qualification details available for this carrier.'}
                                         </div>
                                     )}
                                 </div>

@@ -54,10 +54,7 @@ const Carriers = () => {
         for (let line of lines) {
             if (line.includes('|')) { delimiter = '|'; break; }
             if (line.includes('\t')) { delimiter = '\t'; break; }
-            if (line.includes(',')) {
-                const commaCount = (line.match(/,/g) || []).length;
-                if (commaCount >= 1) { delimiter = ','; break; }
-            }
+            if (line.includes(',') && (line.match(/,/g) || []).length >= 1) { delimiter = ','; break; }
         }
 
         const splitLine = (line, delim) => {
@@ -74,20 +71,22 @@ const Carriers = () => {
             let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
                 if (line[i] === '"') inQuotes = !inQuotes;
-                else if (line[i] === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-                else { current += line[i]; }
+                else if (line[i] === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else current += line[i];
             }
             result.push(current.trim());
             return result.map(c => c.replace(/^"|"$/g, ''));
         };
 
-        const firstLine = lines[0];
-        const orientationKeywords = ['city', 'state', 'days', 'time', 'address', 'terminal'];
-        if (orientationKeywords.some(k => firstLine.toLowerCase().includes(k))) {
-            return renderOrientationTable(text);
+        const rows = [];
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            let cells = splitLine(line, delimiter);
+            if (cells.length === 3) cells = cells.slice(1); // Strip Presentation column
+            if (cells.length > 0) rows.push(cells);
         }
-
-        const rows = lines.map(line => splitLine(line, delimiter));
 
         return (
             <div className="premium-table-wrapper">
@@ -96,15 +95,16 @@ const Carriers = () => {
                         {rows.map((row, idx) => (
                             <tr key={idx} className="table-data-row">
                                 {row.map((cell, i) => {
-                                    const isHeader = idx === 0 || (row.length === 1 && cell === cell.toUpperCase() && cell.length > 3);
+                                    const isHeader = idx === 0 || (row.length === 1 && (cell === cell.toUpperCase() && cell.length > 3 && !/[.\?!]$/.test(cell)));
                                     const isLabel = i === 0 && row.length === 2;
+
                                     return (
                                         <td
                                             key={i}
                                             className={isHeader ? "table-header-cell" : isLabel ? "table-label-cell" : "table-value-cell"}
                                             colSpan={row.length === 1 ? "2" : "1"}
                                         >
-                                            {renderFormattedText(cell)}
+                                            {isHeader || isLabel ? cell.replace(/\*\*/g, '') : renderFormattedText(cell, true)}
                                         </td>
                                     );
                                 })}
@@ -477,8 +477,7 @@ const Carriers = () => {
                             <div className="lane-side-label">Company Benefits & Info</div>
                             <div className="lane-info-content">
                                 {selectedCarrier.benefits && (
-                                    <div className="lane-section">
-                                        <h5 className="lane-section-title">Benefits Summary</h5>
+                                    <div className="lane-section" style={{ marginBottom: '1.5rem' }}>
                                         <div className="lane-section-content">{renderGenericTable(selectedCarrier.benefits)}</div>
                                     </div>
                                 )}
@@ -552,28 +551,14 @@ const Carriers = () => {
                         </div>
 
                         {/* Process & Qualifications */}
-                        {(selectedCarrier.presentation || selectedCarrier.pre_qualifications || selectedCarrier.app_process) && (
+                        {selectedCarrier.app_process && (
                             <div className="lane-info-container" style={{ marginTop: '2rem' }}>
                                 <div className="lane-side-label">Process & Quals</div>
                                 <div className="lane-info-content">
-                                    {selectedCarrier.presentation && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Presentation</h5>
-                                            <div className="lane-section-content">{renderGenericTable(selectedCarrier.presentation)}</div>
-                                        </div>
-                                    )}
-                                    {selectedCarrier.pre_qualifications && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Pre-Qualifications</h5>
-                                            <div className="lane-section-content">{renderGenericTable(selectedCarrier.pre_qualifications)}</div>
-                                        </div>
-                                    )}
-                                    {selectedCarrier.app_process && (
-                                        <div className="lane-section">
-                                            <h5 className="lane-section-title">Application Process</h5>
-                                            <div className="lane-section-content">{renderAppProcess(selectedCarrier.app_process)}</div>
-                                        </div>
-                                    )}
+                                    <div className="lane-section">
+                                        <h5 className="lane-section-title">Application Process</h5>
+                                        <div className="lane-section-content">{renderAppProcess(selectedCarrier.app_process)}</div>
+                                    </div>
                                 </div>
                             </div>
                         )}
