@@ -62,9 +62,9 @@ class CarrierAdmin(admin.ModelAdmin):
                 'benefit_other'
             )
         }),
-        ('Process & Qualifications', {
-            'fields': ('presentation', 'pre_qualifications', 'app_process'),
-            'description': 'Paste table data into Presentation and Pre-Qualifications'
+        ('Data Tables & Consolidation', {
+            'fields': ('benefits', 'presentation', 'pre_qualifications', 'app_process'),
+            'description': 'Paste table-formatted data into these fields for specialized rendering in the frontend.'
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),
