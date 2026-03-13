@@ -504,62 +504,54 @@ const Opportunities = () => {
         if (lines.length === 0) return null;
 
         return (
-            <div className="premium-table-wrapper">
-                <table className="premium-data-table">
-                    <tbody>
-                        {lines.map((line, index) => {
-                            const lineLower = line.toLowerCase();
-                            const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
+            <div className="app-process-container">
+                {lines.map((line, index) => {
+                    const lineLower = line.toLowerCase();
+                    const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
 
-                            // Detect special phases for coloring
-                            let specialClass = "";
-                            if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
-                            else if (lineLower === 'follow up') specialClass = "app-heading-green";
-                            else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
-                            else if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) specialClass = "app-heading-purple";
-                            else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-gray";
+                    // Detect special phases for coloring
+                    let specialClass = "";
+                    if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
+                    else if (lineLower === 'follow up') specialClass = "app-heading-green";
+                    else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
+                    else if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) specialClass = "app-heading-purple";
+                    else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-gray";
 
-                            // Header detection (First line or all caps/short)
-                            const isHeaderLine = (index === 0 && (lineLower.includes('application process') || line.length < 40)) ||
-                                (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
+                    // Header detection (First line or all caps/short)
+                    const isHeaderLine = (index === 0 && (lineLower.includes('application process') || line.length < 40)) ||
+                        (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
 
-                            if (isHeaderLine || specialClass) {
-                                return (
-                                    <tr key={index} className="table-header-row">
-                                        <td colSpan="2" className={`table-header-cell ${specialClass}`}>
-                                            {line}
-                                        </td>
-                                    </tr>
-                                );
-                            }
+                    if (isHeaderLine || specialClass) {
+                        return (
+                            <div key={index} className={`lane-section-title ${specialClass}`} style={{ marginTop: index > 0 ? '1.5rem' : '0', color: specialClass ? 'white' : 'inherit' }}>
+                                {line}
+                            </div>
+                        );
+                    }
 
-                            // Colon check for Label: Value
-                            if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
-                                const colonIdx = cleanLine.indexOf(':');
-                                const label = cleanLine.substring(0, colonIdx).trim();
-                                const value = cleanLine.substring(colonIdx + 1).trim();
+                    // Colon check for Label: Value
+                    if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
+                        const colonIdx = cleanLine.indexOf(':');
+                        const label = cleanLine.substring(0, colonIdx).trim();
+                        const value = cleanLine.substring(colonIdx + 1).trim();
 
-                                return (
-                                    <tr key={index} className="table-data-row">
-                                        <td className="table-label-cell">{label}</td>
-                                        <td className="table-value-cell">{renderFormattedText(value, true)}</td>
-                                    </tr>
-                                );
-                            }
+                        return (
+                            <div key={index} className="lane-item">
+                                <span className="lane-label">{label}:</span>
+                                <span className="lane-value">{renderFormattedText(value, true)}</span>
+                            </div>
+                        );
+                    }
 
-                            // Default row
-                            const isBullet = /^[•\*\-]/.test(line);
-                            return (
-                                <tr key={index} className="table-data-row">
-                                    <td colSpan="2" className="table-full-cell">
-                                        {isBullet && <span className="bullet-dot">•</span>}
-                                        {renderFormattedText(cleanLine, true)}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                    // Default row
+                    const isBullet = /^[•\*\-]/.test(line);
+                    return (
+                        <div key={index} className={isBullet ? "lane-item" : "lane-text-line"}>
+                            {isBullet && <span className="bullet-dot">•</span>}
+                            <span className="lane-text">{renderFormattedText(cleanLine, true)}</span>
+                        </div>
+                    );
+                })}
             </div>
         );
     };

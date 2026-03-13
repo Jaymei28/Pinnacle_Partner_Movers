@@ -124,48 +124,46 @@ const Carriers = () => {
         if (lines.length === 0) return null;
 
         return (
-            <div className="premium-table-wrapper">
-                <table className="premium-data-table">
-                    <tbody>
-                        {lines.map((line, index) => {
-                            const lineLower = line.toLowerCase();
-                            const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
+            <div className="app-process-container">
+                {lines.map((line, index) => {
+                    const lineLower = line.toLowerCase();
+                    const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
 
-                            let specialClass = "";
-                            if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
-                            else if (lineLower === 'follow up') specialClass = "app-heading-green";
-                            else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
+                    let specialClass = "";
+                    if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
+                    else if (lineLower === 'follow up') specialClass = "app-heading-green";
+                    else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
+                    else if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) specialClass = "app-heading-purple";
+                    else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-gray";
 
-                            const isHeader = (index === 0 && line.length < 40) || (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
+                    const isHeader = (index === 0 && line.length < 40) || (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
 
-                            if (isHeader || specialClass) {
-                                return (
-                                    <tr key={index} className="table-header-row">
-                                        <td colSpan="2" className={`table-header-cell ${specialClass}`}>
-                                            {line}
-                                        </td>
-                                    </tr>
-                                );
-                            }
+                    if (isHeader || specialClass) {
+                        return (
+                            <div key={index} className={`lane-section-title ${specialClass}`} style={{ marginTop: index > 0 ? '1.5rem' : '0', color: specialClass ? 'white' : 'inherit' }}>
+                                {line}
+                            </div>
+                        );
+                    }
 
-                            if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
-                                const idx = cleanLine.indexOf(':');
-                                return (
-                                    <tr key={index} className="table-data-row">
-                                        <td className="table-label-cell">{cleanLine.substring(0, idx).trim()}</td>
-                                        <td className="table-value-cell">{renderFormattedText(cleanLine.substring(idx + 1).trim())}</td>
-                                    </tr>
-                                );
-                            }
+                    if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
+                        const idx = cleanLine.indexOf(':');
+                        return (
+                            <div key={index} className="lane-item">
+                                <span className="lane-label">{cleanLine.substring(0, idx).trim()}:</span>
+                                <span className="lane-value">{renderFormattedText(cleanLine.substring(idx + 1).trim())}</span>
+                            </div>
+                        );
+                    }
 
-                            return (
-                                <tr key={index} className="table-data-row">
-                                    <td colSpan="2" className="table-full-cell">{renderFormattedText(line)}</td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                    const isBullet = /^[•\*\-]/.test(line);
+                    return (
+                        <div key={index} className={isBullet ? "lane-item" : "lane-text-line"}>
+                            {isBullet && <span className="bullet-dot">•</span>}
+                            <span className="lane-text">{renderFormattedText(cleanLine)}</span>
+                        </div>
+                    );
+                })}
             </div>
         );
     };
@@ -297,7 +295,7 @@ const Carriers = () => {
         }
     };
 
-    const renderFormattedText = (text) => {
+    const renderFormattedText = (text, forceNormal = false) => {
         if (!text) return null;
 
         // Split by newline and filter out empty lines
