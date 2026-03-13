@@ -26,11 +26,10 @@ services:
         value: admin@example.com
 
   # Frontend (Static Site)
-  - type: web
+  - type: static
     name: jobstream-frontend
-    runtime: static
     buildCommand: "npm install && npm run build"
-    staticPublishPath: dist
+    publishPath: dist
     rootDir: frontend
     routes:
       - type: rewrite
