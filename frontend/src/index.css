@@ -167,6 +167,11 @@
   --brand-blue: #263e57;
   --brand-orange: #d97706;
   --brand-orange-light: #f59e0b;
+  --app-blue: #2563eb;
+  --app-red: #dc2626;
+  --app-green: #16a34a;
+  --app-purple: #9333ea;
+  --app-dark-red: #991b1b;
 }
 
 /* Dark Theme */
@@ -794,6 +799,99 @@ body {
 [data-theme="dark"] .lane-side-label {
   color: #fca5a5 !important;
   /* Soft red for sidebar legend */
+}
+
+/* Application Process Document Style */
+.app-process-container {
+  padding: 1rem 0.5rem;
+  font-family: 'Inter', sans-serif;
+  line-height: 1.6;
+}
+
+.app-main-title {
+  color: var(--app-blue);
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-decoration: underline;
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+
+.app-step-red {
+  color: var(--app-red);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.app-heading-green {
+  color: var(--app-green);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.app-heading-blue {
+  color: var(--app-blue);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.app-heading-purple {
+  color: var(--app-purple);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.app-heading-dark-red {
+  color: var(--app-dark-red);
+  font-weight: 700;
+  text-decoration: underline;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.app-text-block {
+  margin-bottom: 0.75rem;
+  color: #334155;
+  font-weight: 400;
+}
+
+[data-theme="dark"] .app-text-block {
+  color: #cbd5e1;
+}
+
+.app-bullet-list {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.app-bullet-item {
+  position: relative;
+  padding-left: 0.5rem;
+  margin-bottom: 0.25rem;
+  list-style-type: disc;
+}
+
+.app-link {
+  color: #2563eb;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+[data-theme="dark"] .app-link {
+  color: #60a5fa;
 }
 
 /* Icon Styles */

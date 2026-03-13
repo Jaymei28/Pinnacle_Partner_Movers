@@ -129,38 +129,51 @@ const Carriers = () => {
                     const lineLower = line.toLowerCase();
                     const cleanLine = line.replace(/^[•\*\-\s]+/, '').trim();
 
+                    // Detect special phases for coloring/underlining
                     let specialClass = "";
                     if (/^step\s+\d+/i.test(line)) specialClass = "app-step-red";
                     else if (lineLower === 'follow up') specialClass = "app-heading-green";
                     else if (lineLower.includes('approved') && lineLower.includes('now what')) specialClass = "app-heading-blue";
                     else if (lineLower.includes('can expect with') || lineLower.includes('steps you and the driver')) specialClass = "app-heading-purple";
-                    else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-gray";
+                    else if (lineLower.includes('glossary of terms')) specialClass = "app-heading-dark-red";
 
-                    const isHeader = (index === 0 && line.length < 40) || (line.length < 50 && line === line.toUpperCase() && !/[.\?!]$/.test(line));
+                    // Header detection
+                    const isMainTitle = index === 0 && line.length < 50 && (!line.includes(':') || line.toUpperCase() === line);
 
-                    if (isHeader || specialClass) {
-                        return (
-                            <div key={index} className={`lane-section-title ${specialClass}`} style={{ marginTop: index > 0 ? '1.5rem' : '0', color: specialClass ? 'white' : 'inherit' }}>
-                                {line}
-                            </div>
-                        );
+                    if (isMainTitle && !specialClass) {
+                        return <div key={index} className="app-main-title">{line}</div>;
                     }
 
-                    if (cleanLine.includes(':') && cleanLine.indexOf(':') < 35) {
-                        const idx = cleanLine.indexOf(':');
-                        return (
-                            <div key={index} className="lane-item">
-                                <span className="lane-label">{cleanLine.substring(0, idx).trim()}:</span>
-                                <span className="lane-value">{renderFormattedText(cleanLine.substring(idx + 1).trim())}</span>
-                            </div>
-                        );
+                    if (specialClass) {
+                        return <div key={index} className={specialClass}>{line}</div>;
                     }
 
+                    // Bullet detection
                     const isBullet = /^[•\*\-]/.test(line);
+                    if (isBullet) {
+                        return (
+                            <ul key={index} className="app-bullet-list">
+                                <li className="app-bullet-item">{renderFormattedText(cleanLine, true)}</li>
+                            </ul>
+                        );
+                    }
+
+                    // Glossary or Key: Value detection (within normal text)
+                    if (cleanLine.includes(':') && cleanLine.indexOf(':') < 40) {
+                        const colonIdx = cleanLine.indexOf(':');
+                        const label = cleanLine.substring(0, colonIdx).trim();
+                        const value = cleanLine.substring(colonIdx + 1).trim();
+                        return (
+                            <div key={index} className="app-text-block">
+                                <strong>{label}:</strong> {renderFormattedText(value, true)}
+                            </div>
+                        );
+                    }
+
+                    // Default text block
                     return (
-                        <div key={index} className={isBullet ? "lane-item" : "lane-text-line"}>
-                            {isBullet && <span className="bullet-dot">•</span>}
-                            <span className="lane-text">{renderFormattedText(cleanLine)}</span>
+                        <div key={index} className="app-text-block">
+                            {renderFormattedText(cleanLine, true)}
                         </div>
                     );
                 })}
