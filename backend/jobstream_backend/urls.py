@@ -7,7 +7,11 @@ from django.urls import re_path
 from django.views.static import serve
 from django.http import HttpResponse
 
+from django.shortcuts import redirect
+
 def home(request):
+    if 'admin.pinnaclemoversrecruiting.com' in request.get_host():
+        return redirect('/admin/')
     return HttpResponse("JobStream API is Online and Running! 🚀")
 
 urlpatterns = [
