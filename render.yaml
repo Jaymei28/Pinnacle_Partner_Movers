@@ -5,6 +5,7 @@ services:
     env: python
     plan: starter
     buildCommand: "sh build.sh"
+    preDeployCommand: "python manage.py migrate && python import_local_dump.py && python create_admin.py"
     startCommand: "gunicorn jobstream_backend.wsgi:application"
     rootDir: backend
     envVars:
